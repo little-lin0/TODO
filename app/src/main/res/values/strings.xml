@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">每日待办</string>
+
+    <!-- 优先级选项 -->
+    <string-array name="priority_array">
+        <item>高优先级</item>
+        <item>中优先级</item>
+        <item>低优先级</item>
+    </string-array>
+
+    <!-- 分类选项 -->
+    <string-array name="category_array">
+        <item>工作</item>
+        <item>生活</item>
+        <item>学习</item>
+        <item>其他</item>
+    </string-array>
+</resources>

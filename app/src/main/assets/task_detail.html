@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>任务详情</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f8f9fa;
+            min-height: 100vh;
+            padding-bottom: 20px;
+        }
+
+        .header {
+            background: white;
+            color: #333;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .back-btn {
+            background: transparent;
+            border: none;
+            color: #667eea;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px 8px;
+            margin-right: 12px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .container {
+            padding: 16px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .info-card {
+            background: white;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: #667eea;
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .task-title {
+            font-size: 18px;
+            color: #333;
+            font-weight: 600;
+            line-height: 1.4;
+            margin-bottom: 4px;
+        }
+
+        .task-status {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 8px;
+        }
+
+        .task-status.completed {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .task-status.pending {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+
+        .task-status.overdue {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .meta-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .priority-high {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .priority-medium {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+
+        .priority-low {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .category-work {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .category-life {
+            background: #f3e5f5;
+            color: #6a1b9a;
+        }
+
+        .category-study {
+            background: #fff9c4;
+            color: #f57f17;
+        }
+
+        .category-other {
+            background: #f5f5f5;
+            color: #616161;
+        }
+
+        .deadline-badge {
+            background: #fce4ec;
+            color: #c2185b;
+        }
+
+        .assignee-badge {
+            background: #e0f2f1;
+            color: #00695c;
+        }
+
+        .info-text {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .empty-text {
+            color: #999;
+            font-style: italic;
+        }
+
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .image-item {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .image-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .image-item img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .time-info {
+            font-size: 12px;
+            color: #999;
+            margin-top: 8px;
+        }
+
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, #e0e0e0, transparent);
+            margin: 16px 0;
+        }
+
+        /* 图片查看模态框 */
+        .image-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-modal.active {
+            display: flex;
+        }
+
+        .image-modal img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 32px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .close-modal:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="back-btn" onclick="goBack()">←</button>
+        <div class="header-title">📋 任务详情</div>
+    </div>
+
+    <div class="container">
+        <!-- 任务标题和状态 -->
+        <div class="info-card">
+            <div class="info-label">任务标题</div>
+            <div class="task-title" id="taskTitle">加载中...</div>
+            <div id="taskStatusBadge"></div>
+        </div>
+
+        <!-- 任务元信息 -->
+        <div class="info-card">
+            <div class="info-label">任务信息</div>
+            <div class="meta-row" id="taskMeta"></div>
+        </div>
+
+        <!-- 任务备注 -->
+        <div class="info-card" id="notesCard">
+            <div class="info-label">📝 任务备注</div>
+            <div class="info-text" id="taskNotes"></div>
+            <div class="images-grid" id="notesImages"></div>
+        </div>
+
+        <!-- 完成信息 -->
+        <div class="info-card" id="completionCard" style="display: none;">
+            <div class="info-label">✅ 完成信息</div>
+            <div class="info-text" id="completionNotes"></div>
+            <div class="images-grid" id="completionImages"></div>
+            <div class="time-info" id="completionTime"></div>
+        </div>
+
+        <!-- 时间信息 -->
+        <div class="info-card">
+            <div class="info-label">⏰ 时间信息</div>
+            <div class="time-info" id="timeInfo"></div>
+        </div>
+    </div>
+
+    <!-- 图片查看模态框 -->
+    <div class="image-modal" id="imageModal" onclick="closeImageModal()">
+        <button class="close-modal" onclick="closeImageModal()">×</button>
+        <img id="modalImage" src="" alt="查看图片">
+    </div>
+
+    <script>
+        let taskData = null;
+
+        window.onload = function() {
+            // 从URL参数获取任务数据
+            const urlParams = new URLSearchParams(window.location.search);
+            const taskId = urlParams.get('id');
+
+            if (taskId) {
+                const taskDataStr = localStorage.getItem('viewTask_' + taskId);
+                if (taskDataStr) {
+                    taskData = JSON.parse(taskDataStr);
+                    displayTaskDetail(taskData);
+                } else {
+                    alert('任务数据丢失，请返回重试');
+                    goBack();
+                }
+            } else {
+                alert('无效的任务ID');
+                goBack();
+            }
+        };
+
+        function displayTaskDetail(task) {
+            // 显示任务标题
+            document.getElementById('taskTitle').textContent = task.title || '无标题';
+
+            // 显示任务状态
+            const statusBadge = document.getElementById('taskStatusBadge');
+            const isOverdue = task.deadline && new Date(task.deadline) < new Date() && !task.completed;
+            let statusClass = 'pending';
+            let statusText = '未完成';
+
+            if (task.completed) {
+                statusClass = 'completed';
+                statusText = '已完成';
+            } else if (isOverdue) {
+                statusClass = 'overdue';
+                statusText = '已超时';
+            }
+
+            statusBadge.innerHTML = `<span class="task-status ${statusClass}">${statusText}</span>`;
+
+            // 显示任务元信息
+            const metaContainer = document.getElementById('taskMeta');
+            let metaHtml = '';
+
+            // 优先级
+            const priorityNames = { high: '高优先级', medium: '中优先级', low: '低优先级' };
+            metaHtml += `<span class="meta-badge priority-${task.priority || 'medium'}">⭐ ${priorityNames[task.priority] || '中优先级'}</span>`;
+
+            // 分类
+            const categoryNames = { work: '工作', life: '生活', study: '学习', other: '其他' };
+            metaHtml += `<span class="meta-badge category-${task.category || 'other'}">📁 ${categoryNames[task.category] || '其他'}</span>`;
+
+            // 截止时间
+            if (task.deadline) {
+                const deadline = new Date(task.deadline);
+                const formattedDeadline = deadline.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                metaHtml += `<span class="meta-badge deadline-badge">⏰ ${formattedDeadline}</span>`;
+            }
+
+            // 完成人
+            if (task.assignees && task.assignees.length > 0) {
+                metaHtml += `<span class="meta-badge assignee-badge">👤 ${task.assignees.join(', ')}</span>`;
+            } else if (task.assignee) {
+                metaHtml += `<span class="meta-badge assignee-badge">👤 ${task.assignee}</span>`;
+            }
+
+            metaContainer.innerHTML = metaHtml;
+
+            // 显示任务备注
+            const notesCard = document.getElementById('notesCard');
+            const notesText = document.getElementById('taskNotes');
+            const notesImagesContainer = document.getElementById('notesImages');
+
+            if (task.notes || task.notesImages) {
+                notesCard.style.display = 'block';
+                notesText.textContent = task.notes || '';
+                notesText.className = task.notes ? 'info-text' : 'info-text empty-text';
+                if (!task.notes) {
+                    notesText.textContent = '无备注';
+                }
+
+                // 显示备注图片
+                if (task.notesImages) {
+                    try {
+                        const images = typeof task.notesImages === 'string' ? JSON.parse(task.notesImages) : task.notesImages;
+                        if (Array.isArray(images) && images.length > 0) {
+                            notesImagesContainer.innerHTML = images.map((img, index) =>
+                                `<div class="image-item" onclick="viewImage('${img.data || img}')">
+                                    <img src="${img.data || img}" alt="${img.name || '备注图片' + (index + 1)}">
+                                </div>`
+                            ).join('');
+                        }
+                    } catch (e) {
+                        console.error('解析备注图片失败:', e);
+                    }
+                }
+            } else {
+                notesCard.style.display = 'block';
+                notesText.textContent = '无备注';
+                notesText.className = 'info-text empty-text';
+            }
+
+            // 显示完成信息
+            if (task.completed) {
+                const completionCard = document.getElementById('completionCard');
+                const completionNotesText = document.getElementById('completionNotes');
+                const completionImagesContainer = document.getElementById('completionImages');
+                const completionTimeText = document.getElementById('completionTime');
+
+                completionCard.style.display = 'block';
+
+                // 完成备注
+                completionNotesText.textContent = task.completionNotes || '无完成备注';
+                completionNotesText.className = task.completionNotes ? 'info-text' : 'info-text empty-text';
+
+                // 完成图片
+                const completionImages = task.completionImages || (task.completionImage ? [task.completionImage] : []);
+                if (completionImages.length > 0) {
+                    completionImagesContainer.innerHTML = completionImages.map((img, index) =>
+                        `<div class="image-item" onclick="viewImage('${img}')">
+                            <img src="${img}" alt="完成图片${index + 1}">
+                        </div>`
+                    ).join('');
+                }
+
+                // 完成时间
+                if (task.completedAt) {
+                    const completedTime = new Date(task.completedAt);
+                    completionTimeText.textContent = '完成时间：' + completedTime.toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                }
+            }
+
+            // 显示时间信息
+            const timeInfoText = document.getElementById('timeInfo');
+            let timeInfoHtml = '';
+
+            if (task.createdAt) {
+                const createdTime = new Date(task.createdAt);
+                timeInfoHtml += `创建时间：${createdTime.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })}<br>`;
+            }
+
+            if (task.updatedAt) {
+                const updatedTime = new Date(task.updatedAt);
+                timeInfoHtml += `更新时间：${updatedTime.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })}`;
+            }
+
+            timeInfoText.innerHTML = timeInfoHtml || '无时间信息';
+        }
+
+        function viewImage(imageSrc) {
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            modalImage.src = imageSrc;
+            modal.classList.add('active');
+        }
+
+        function closeImageModal() {
+            const modal = document.getElementById('imageModal');
+            modal.classList.remove('active');
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+    </script>
+</body>
+</html>

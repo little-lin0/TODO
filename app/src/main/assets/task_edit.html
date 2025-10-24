@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>编辑任务</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f8f9fa;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        .header {
+            background: white;
+            color: #333;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .back-btn {
+            background: transparent;
+            border: none;
+            color: #667eea;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px 8px;
+            margin-right: 12px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .container {
+            padding: 16px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .form-group {
+            background: white;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-label.required::after {
+            content: " *";
+            color: #f44336;
+        }
+
+        .form-input,
+        .form-textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 16px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        .btn-upload {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn-upload:hover {
+            background: #5568d3;
+        }
+
+        .image-preview-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .image-preview {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-preview .remove-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 26px;
+            height: 26px;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+
+        .image-preview .remove-btn:hover {
+            transform: scale(1.1);
+        }
+
+        /* 自定义选择框样式 */
+        .custom-single-select {
+            position: relative;
+            width: 100%;
+        }
+
+        .custom-select-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            min-height: 48px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .custom-select-trigger:hover {
+            border-color: #b0b0b0;
+        }
+
+        .custom-select-trigger.active {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .custom-select-display {
+            flex: 1;
+        }
+
+        .custom-select-arrow {
+            margin-left: 8px;
+            transition: transform 0.3s ease;
+            font-size: 12px;
+        }
+
+        .custom-select-trigger.active .custom-select-arrow {
+            transform: rotate(180deg);
+        }
+
+        .custom-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #667eea;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            margin-top: -1px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .custom-select-dropdown.active {
+            display: block;
+        }
+
+        .custom-select-option {
+            padding: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s ease;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .custom-select-option:last-child {
+            border-bottom: none;
+        }
+
+        .custom-select-option:hover {
+            background-color: #e3f2fd;
+        }
+
+        .custom-select-option.selected {
+            background-color: #667eea;
+            color: white;
+            font-weight: 500;
+        }
+
+        .custom-select-option.selected:hover {
+            background-color: #5568d3;
+        }
+
+        /* 多选完成人样式 */
+        .multi-select-container {
+            position: relative;
+        }
+
+        .multi-select-display {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            min-height: 48px;
+            transition: all 0.3s ease;
+        }
+
+        .multi-select-display:hover {
+            border-color: #b0b0b0;
+        }
+
+        .multi-select-display.active {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .multi-select-tags {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .assignee-tag {
+            display: inline-flex;
+            align-items: center;
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 13px;
+            gap: 6px;
+        }
+
+        .assignee-tag .remove {
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .placeholder {
+            color: #999;
+        }
+
+        .dropdown-arrow {
+            margin-left: 8px;
+            transition: transform 0.3s ease;
+            font-size: 12px;
+        }
+
+        .multi-select-display.active .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .multi-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #667eea;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            margin-top: -1px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .multi-select-dropdown.active {
+            display: block;
+        }
+
+        .assignee-search {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 1;
+        }
+
+        .assignee-search input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .assignee-option {
+            padding: 10px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background-color 0.2s ease;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        .assignee-option:last-child {
+            border-bottom: none;
+        }
+
+        .assignee-option:hover {
+            background-color: #e3f2fd;
+        }
+
+        .assignee-option input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .assignee-option label {
+            flex: 1;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .footer-actions {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 12px 16px;
+            display: flex;
+            gap: 12px;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+            max-width: 800px;
+            margin: 0 auto;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .btn-cancel,
+        .btn-save {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-cancel {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        .btn-cancel:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-save {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-save:hover {
+            background: #5568d3;
+        }
+
+        .form-help {
+            font-size: 11px;
+            color: #999;
+            margin-top: 6px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="back-btn" onclick="goBack()">←</button>
+        <div class="header-title">✏️ 编辑任务</div>
+    </div>
+
+    <div class="container">
+        <div class="form-group">
+            <label class="form-label required">任务标题</label>
+            <input type="text" class="form-input" id="taskTitle" placeholder="请输入任务标题..." maxlength="100">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">任务备注</label>
+            <textarea class="form-textarea" id="taskNotes" placeholder="请输入任务备注（可选）..." maxlength="500"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">备注图片</label>
+            <input type="file" id="taskNotesImages" accept="image/*" multiple style="display: none;">
+            <button type="button" class="btn-upload" onclick="document.getElementById('taskNotesImages').click()">
+                📷 选择图片
+            </button>
+            <div class="image-preview-container" id="taskNotesImagesPreview"></div>
+            <small class="form-help">可选择多张图片作为任务备注的附件</small>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">优先级</label>
+                <div class="custom-single-select" id="priorityContainer">
+                    <div class="custom-select-trigger" onclick="toggleDropdown('priority')">
+                        <div class="custom-select-display" id="priorityDisplay">高优先级</div>
+                        <div class="custom-select-arrow">▼</div>
+                    </div>
+                    <div class="custom-select-dropdown" id="priorityDropdown">
+                        <div class="custom-select-option selected" data-value="high" onclick="selectOption('priority', 'high', '高优先级')">高优先级</div>
+                        <div class="custom-select-option" data-value="medium" onclick="selectOption('priority', 'medium', '中优先级')">中优先级</div>
+                        <div class="custom-select-option" data-value="low" onclick="selectOption('priority', 'low', '低优先级')">低优先级</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">分类</label>
+                <div class="custom-single-select" id="categoryContainer">
+                    <div class="custom-select-trigger" onclick="toggleDropdown('category')">
+                        <div class="custom-select-display" id="categoryDisplay">工作</div>
+                        <div class="custom-select-arrow">▼</div>
+                    </div>
+                    <div class="custom-select-dropdown" id="categoryDropdown">
+                        <div class="custom-select-option selected" data-value="work" onclick="selectOption('category', 'work', '工作')">工作</div>
+                        <div class="custom-select-option" data-value="life" onclick="selectOption('category', 'life', '生活')">生活</div>
+                        <div class="custom-select-option" data-value="study" onclick="selectOption('category', 'study', '学习')">学习</div>
+                        <div class="custom-select-option" data-value="other" onclick="selectOption('category', 'other', '其他')">其他</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">截止时间</label>
+            <input type="datetime-local" class="form-input" id="deadline">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">完成人</label>
+            <div class="multi-select-container">
+                <div class="multi-select-display" onclick="toggleAssigneeDropdown()">
+                    <div class="multi-select-tags" id="assigneeTags">
+                        <span class="placeholder">选择完成人（可选）</span>
+                    </div>
+                    <span class="dropdown-arrow">▼</span>
+                </div>
+                <div class="multi-select-dropdown" id="assigneeDropdown">
+                    <div class="assignee-search">
+                        <input type="text" placeholder="搜索完成人..." onkeyup="filterAssignees(this.value)">
+                    </div>
+                    <div id="assigneeOptions">
+                        <!-- 选项将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+            </div>
+            <small class="form-help">可以选择多个完成人</small>
+        </div>
+    </div>
+
+    <div class="footer-actions">
+        <button class="btn-cancel" onclick="goBack()">取消</button>
+        <button class="btn-save" onclick="saveTask()">💾 保存</button>
+    </div>
+
+    <script>
+        // 从URL参数获取任务数据
+        let taskData = null;
+        let selectedImages = [];
+        let selectedValues = {
+            priority: 'high',
+            category: 'work'
+        };
+        let selectedAssignees = [];
+        let assignees = [];
+
+        window.onload = function() {
+            // 加载完成人列表
+            loadAssignees();
+
+            // 从URL参数或localStorage获取任务数据
+            const urlParams = new URLSearchParams(window.location.search);
+            const taskId = urlParams.get('id');
+
+            if (taskId) {
+                // 从localStorage获取任务数据
+                const taskDataStr = localStorage.getItem('editTask_' + taskId);
+                if (taskDataStr) {
+                    taskData = JSON.parse(taskDataStr);
+                    loadTaskData(taskData);
+                }
+            }
+
+            // 点击页面其他地方关闭下拉框
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.custom-single-select') && !e.target.closest('.multi-select-container')) {
+                    closeAllDropdowns();
+                }
+            });
+        };
+
+        function loadAssignees() {
+            const saved = localStorage.getItem('assignees');
+            if (saved) {
+                try {
+                    assignees = JSON.parse(saved);
+                    // 规范化数据格式
+                    assignees = assignees.map(assignee => {
+                        if (typeof assignee === 'string') {
+                            return { name: assignee };
+                        }
+                        return assignee;
+                    });
+                } catch (error) {
+                    console.error('加载完成人列表失败:', error);
+                    assignees = [];
+                }
+            }
+            renderAssigneeOptions();
+        }
+
+        function renderAssigneeOptions() {
+            const container = document.getElementById('assigneeOptions');
+            container.innerHTML = '';
+
+            if (assignees.length === 0) {
+                container.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">暂无完成人，请在设置中添加</div>';
+                return;
+            }
+
+            assignees.forEach(assignee => {
+                const name = typeof assignee === 'string' ? assignee : assignee.name;
+                const isChecked = selectedAssignees.includes(name);
+
+                const option = document.createElement('div');
+                option.className = 'assignee-option';
+                option.innerHTML = `
+                    <input type="checkbox" id="assignee_${name}" ${isChecked ? 'checked' : ''} onchange="toggleAssignee('${name}')">
+                    <label for="assignee_${name}">${name}</label>
+                `;
+                container.appendChild(option);
+            });
+        }
+
+        function toggleAssignee(name) {
+            const index = selectedAssignees.indexOf(name);
+            if (index > -1) {
+                selectedAssignees.splice(index, 1);
+            } else {
+                selectedAssignees.push(name);
+            }
+            updateAssigneeDisplay();
+        }
+
+        function updateAssigneeDisplay() {
+            const tagsContainer = document.getElementById('assigneeTags');
+
+            if (selectedAssignees.length === 0) {
+                tagsContainer.innerHTML = '<span class="placeholder">选择完成人（可选）</span>';
+            } else {
+                tagsContainer.innerHTML = selectedAssignees.map(name => `
+                    <span class="assignee-tag">
+                        ${name}
+                        <span class="remove" onclick="removeAssignee('${name}')">×</span>
+                    </span>
+                `).join('');
+            }
+        }
+
+        function removeAssignee(name) {
+            event.stopPropagation();
+            const index = selectedAssignees.indexOf(name);
+            if (index > -1) {
+                selectedAssignees.splice(index, 1);
+                updateAssigneeDisplay();
+                renderAssigneeOptions();
+            }
+        }
+
+        function toggleAssigneeDropdown() {
+            event.stopPropagation();
+            const display = document.querySelector('.multi-select-display');
+            const dropdown = document.getElementById('assigneeDropdown');
+
+            closeAllDropdowns('assignee');
+
+            const isActive = dropdown.classList.contains('active');
+            if (isActive) {
+                display.classList.remove('active');
+                dropdown.classList.remove('active');
+            } else {
+                display.classList.add('active');
+                dropdown.classList.add('active');
+            }
+        }
+
+        function filterAssignees(searchText) {
+            const options = document.querySelectorAll('.assignee-option');
+            const search = searchText.toLowerCase();
+
+            options.forEach(option => {
+                const label = option.querySelector('label').textContent.toLowerCase();
+                option.style.display = label.includes(search) ? 'flex' : 'none';
+            });
+        }
+
+        function loadTaskData(data) {
+            document.getElementById('taskTitle').value = data.title || '';
+            document.getElementById('taskNotes').value = data.notes || '';
+
+            // 转换截止时间格式为 datetime-local 所需格式
+            if (data.deadline) {
+                const deadlineFormatted = convertToDatetimeLocal(data.deadline);
+                document.getElementById('deadline').value = deadlineFormatted;
+            }
+
+            // 设置优先级
+            if (data.priority) {
+                selectedValues.priority = data.priority;
+                updateSelectDisplay('priority', data.priority);
+            }
+
+            // 设置分类
+            if (data.category) {
+                selectedValues.category = data.category;
+                updateSelectDisplay('category', data.category);
+            }
+
+            // 设置完成人
+            if (data.assignees && Array.isArray(data.assignees)) {
+                selectedAssignees = [...data.assignees];
+            } else if (data.assignee) {
+                selectedAssignees = [data.assignee];
+            }
+            updateAssigneeDisplay();
+            renderAssigneeOptions();
+        }
+
+        // 将 ISO 日期格式转换为 datetime-local 输入框所需的格式
+        function convertToDatetimeLocal(isoString) {
+            try {
+                // 从 UTC 时间创建 Date 对象
+                const utcDate = new Date(isoString);
+
+                // 减去8小时，转换为实际的北京时间
+                const localDate = new Date(utcDate.getTime() - 8 * 60 * 60 * 1000);
+
+                // 格式化为 datetime-local 所需格式
+                const year = localDate.getFullYear();
+                const month = String(localDate.getMonth() + 1).padStart(2, '0');
+                const day = String(localDate.getDate()).padStart(2, '0');
+                const hours = String(localDate.getHours()).padStart(2, '0');
+                const minutes = String(localDate.getMinutes()).padStart(2, '0');
+
+                return `${year}-${month}-${day}T${hours}:${minutes}`;
+            } catch (error) {
+                console.error('日期格式转换失败:', error);
+                return '';
+            }
+        }
+
+        function updateSelectDisplay(type, value) {
+            const displayMap = {
+                priority: {
+                    high: '高优先级',
+                    medium: '中优先级',
+                    low: '低优先级'
+                },
+                category: {
+                    work: '工作',
+                    life: '生活',
+                    study: '学习',
+                    other: '其他'
+                }
+            };
+
+            const display = document.getElementById(type + 'Display');
+            if (display && displayMap[type][value]) {
+                display.textContent = displayMap[type][value];
+            }
+
+            // 更新选中状态
+            const dropdown = document.getElementById(type + 'Dropdown');
+            if (dropdown) {
+                const options = dropdown.querySelectorAll('.custom-select-option');
+                options.forEach(option => {
+                    if (option.getAttribute('data-value') === value) {
+                        option.classList.add('selected');
+                    } else {
+                        option.classList.remove('selected');
+                    }
+                });
+            }
+        }
+
+        function toggleDropdown(type) {
+            event.stopPropagation();
+
+            const trigger = document.querySelector(`#${type}Container .custom-select-trigger`);
+            const dropdown = document.getElementById(type + 'Dropdown');
+
+            // 关闭其他下拉框
+            closeAllDropdowns(type);
+
+            // 切换当前下拉框
+            const isActive = dropdown.classList.contains('active');
+            if (isActive) {
+                trigger.classList.remove('active');
+                dropdown.classList.remove('active');
+            } else {
+                trigger.classList.add('active');
+                dropdown.classList.add('active');
+            }
+        }
+
+        function closeAllDropdowns(except) {
+            const dropdowns = document.querySelectorAll('.custom-select-dropdown');
+            const triggers = document.querySelectorAll('.custom-select-trigger');
+
+            dropdowns.forEach((dropdown, index) => {
+                if (!except || dropdown.id !== except + 'Dropdown') {
+                    dropdown.classList.remove('active');
+                    if (triggers[index]) {
+                        triggers[index].classList.remove('active');
+                    }
+                }
+            });
+
+            if (except !== 'assignee') {
+                const assigneeDisplay = document.querySelector('.multi-select-display');
+                const assigneeDropdown = document.getElementById('assigneeDropdown');
+                if (assigneeDisplay) assigneeDisplay.classList.remove('active');
+                if (assigneeDropdown) assigneeDropdown.classList.remove('active');
+            }
+        }
+
+        function selectOption(type, value, label) {
+            event.stopPropagation();
+
+            selectedValues[type] = value;
+            document.getElementById(type + 'Display').textContent = label;
+
+            // 更新选中状态
+            const dropdown = document.getElementById(type + 'Dropdown');
+            const options = dropdown.querySelectorAll('.custom-select-option');
+            options.forEach(option => {
+                if (option.getAttribute('data-value') === value) {
+                    option.classList.add('selected');
+                } else {
+                    option.classList.remove('selected');
+                }
+            });
+
+            // 关闭下拉框
+            closeAllDropdowns();
+        }
+
+        // 处理图片选择
+        document.getElementById('taskNotesImages').addEventListener('change', function(e) {
+            const files = e.target.files;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const reader = new FileReader();
+
+                reader.onload = function(event) {
+                    selectedImages.push({
+                        data: event.target.result,
+                        name: file.name
+                    });
+                    displayImages();
+                };
+
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function displayImages() {
+            const container = document.getElementById('taskNotesImagesPreview');
+            container.innerHTML = '';
+
+            selectedImages.forEach((img, index) => {
+                const div = document.createElement('div');
+                div.className = 'image-preview';
+                div.innerHTML = `
+                    <img src="${img.data}" alt="${img.name}">
+                    <button class="remove-btn" onclick="removeImage(${index})">×</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function removeImage(index) {
+            selectedImages.splice(index, 1);
+            displayImages();
+        }
+
+        // 获取本地时间的ISO字符串（北京时间 UTC+8）
+        function getLocalISOString() {
+            const now = new Date();
+            const offset = now.getTimezoneOffset() * 60000; // 分钟转毫秒
+            const localTime = new Date(now.getTime() - offset);
+            return localTime.toISOString().slice(0, -1); // 移除末尾的'Z'，因为这不是UTC时间
+        }
+
+        async function saveTask() {
+            const title = document.getElementById('taskTitle').value.trim();
+
+            if (!title) {
+                alert('请输入任务标题');
+                return;
+            }
+
+            if (!taskData || !taskData.id) {
+                alert('任务数据丢失，请返回重试');
+                return;
+            }
+
+            // 获取数据库配置
+            const supabaseUrl = localStorage.getItem('supabase_url');
+            const supabaseAnonKey = localStorage.getItem('supabase_anon_key');
+            const supabaseUserId = localStorage.getItem('supabase_user_id');
+
+            if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('YOUR_PROJECT_ID') || supabaseAnonKey.includes('YOUR_SUPABASE_ANON_KEY')) {
+                alert('数据库配置丢失或未配置，请在设置中配置Supabase连接信息');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            const DATABASE_CONFIG = {
+                supabaseUrl: supabaseUrl,
+                supabaseAnonKey: supabaseAnonKey,
+                tableName: 'tasks',
+                userId: supabaseUserId
+            };
+
+            // 获取任务数据
+            const notes = document.getElementById('taskNotes').value.trim();
+            const deadline = document.getElementById('deadline').value || null;
+
+            // 更新任务对象
+            const assigneeString = selectedAssignees.length > 0 ? selectedAssignees.join(',') : null;
+
+            const taskDataToUpdate = {
+                title: title,
+                notes: notes || null,
+                notes_images: selectedImages.length > 0 ? JSON.stringify(selectedImages) : null,
+                assignee: assigneeString,
+                category: selectedValues.category || 'work',
+                deadline: deadline,
+                priority: selectedValues.priority || 'medium',
+                assignees: selectedAssignees || null,
+                updated_at: getLocalISOString()
+            };
+
+            // 调用API更新任务
+            try {
+                const response = await fetch(`${DATABASE_CONFIG.supabaseUrl}/rest/v1/${DATABASE_CONFIG.tableName}?id=eq.${taskData.id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': DATABASE_CONFIG.supabaseAnonKey,
+                        'Authorization': `Bearer ${DATABASE_CONFIG.supabaseAnonKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(taskDataToUpdate)
+                });
+
+                if (response.ok) {
+                    console.log('任务更新成功');
+
+                    // 保存到localStorage供主页面使用（可选）
+                    const taskObj = {
+                        id: taskData.id,
+                        title: title,
+                        notes: notes,
+                        priority: selectedValues.priority,
+                        category: selectedValues.category,
+                        deadline: deadline,
+                        assignees: selectedAssignees,
+                        images: selectedImages
+                    };
+                    localStorage.setItem('savedTask', JSON.stringify(taskObj));
+
+                    // 返回主页面
+                    window.location.href = 'index.html?action=taskSaved';
+                } else {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+            } catch (error) {
+                console.error('更新任务失败:', error);
+                alert('更新任务失败: ' + error.message + '\n\n请检查网络连接后重试');
+            }
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+    </script>
+</body>
+</html>
