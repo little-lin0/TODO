@@ -162,11 +162,14 @@ public class MessageListenerService extends Service {
             channel = new android.app.NotificationChannel(
                 "service_channel",
                 "后台消息服务",
-                android.app.NotificationManager.IMPORTANCE_DEFAULT  // 提升重要性
+                android.app.NotificationManager.IMPORTANCE_MIN  // 最小重要性，不在状态栏显示
             );
             channel.setDescription("保持应用在后台监听新消息通知");
             channel.setShowBadge(false);  // 不显示角标
             channel.setSound(null, null);  // 静音
+            channel.enableLights(false);  // 不显示指示灯
+            channel.enableVibration(false);  // 不震动
+            channel.setLockscreenVisibility(android.app.Notification.VISIBILITY_SECRET);  // 锁屏不显示
 
             android.app.NotificationManager manager = getSystemService(android.app.NotificationManager.class);
             manager.createNotificationChannel(channel);
@@ -184,13 +187,15 @@ public class MessageListenerService extends Service {
         androidx.core.app.NotificationCompat.Builder builder =
             new androidx.core.app.NotificationCompat.Builder(this, "service_channel")
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("消息监听服务")
-                .setContentText("正在后台监听新消息，点击打开应用")
+                .setContentTitle("后台服务运行中")
+                .setContentText("消息监听服务")
                 .setContentIntent(pendingIntent)
-                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)  // 提升优先级
+                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_MIN)  // 最低优先级
                 .setCategory(androidx.core.app.NotificationCompat.CATEGORY_SERVICE)
                 .setOngoing(true)  // 持续通知，不可滑动删除
                 .setAutoCancel(false)  // 点击后不自动取消
+                .setShowWhen(false)  // 不显示时间
+                .setVisibility(androidx.core.app.NotificationCompat.VISIBILITY_SECRET)  // 锁屏不显示
                 .setForegroundServiceBehavior(androidx.core.app.NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE);
 
         startForeground(1000, builder.build());
@@ -1066,17 +1071,9 @@ public class MessageListenerService extends Service {
      * @param today 今天的日期字符串 (格式: yyyy-MM-dd)
      * @return true表示今天已经创建过每日任务，false表示还未创建
      */
-    private boolean checkTaskExistsToday(String today) {
+    private boolean checkTaskExistsToday(String supabaseUrl, String supabaseAnonKey, String supabaseUserId,
+                                         String title, String assignee, String today) {
         try {
-            android.content.SharedPreferences prefs = getSharedPreferences("app_prefs", MODE_PRIVATE);
-            String supabaseUrl = prefs.getString("supabase_url", "");
-            String supabaseAnonKey = prefs.getString("supabase_anon_key", "");
-            String supabaseUserId = prefs.getString("supabase_user_id", "");
-
-            if (supabaseUrl.isEmpty() || supabaseAnonKey.isEmpty() || supabaseUserId.isEmpty()) {
-                Log.w(TAG, "Supabase配置不完整，无法检查每日任务是否存在");
-                return false;
-            }
 
             // 构建查询URL：查询今天创建的、标记为每日待办的任务
             // created_at.gte=今天开始时间&created_at.lt=明天开始时间&is_daily_todo=eq.true&user_id=eq.用户ID
@@ -1085,10 +1082,13 @@ public class MessageListenerService extends Service {
 
             String queryUrl = supabaseUrl + "/rest/v1/tasks?" +
                 "user_id=eq." + supabaseUserId +
-                "&is_daily_todo=eq.true" +
+                "&title=eq." + java.net.URLEncoder.encode(title, "UTF-8") +
+                "&assignee=eq." + java.net.URLEncoder.encode(assignee, "UTF-8") +
                 "&created_at=gte." + todayStart +
                 "&created_at=lt." + tomorrowStart +
                 "&select=id";
+
+            Log.d(TAG, "检查任务是否存在 - URL: " + queryUrl);
 
             java.net.URL url = new java.net.URL(queryUrl);
             java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
@@ -1098,10 +1098,10 @@ public class MessageListenerService extends Service {
             connection.setRequestProperty("Content-Type", "application/json");
 
             int responseCode = connection.getResponseCode();
+
             if (responseCode == java.net.HttpURLConnection.HTTP_OK) {
-                // 读取响应
                 java.io.BufferedReader reader = new java.io.BufferedReader(
-                    new java.io.InputStreamReader(connection.getInputStream()));
+                        new java.io.InputStreamReader(connection.getInputStream()));
                 StringBuilder response = new StringBuilder();
                 String line;
                 while ((line = reader.readLine()) != null) {
@@ -1109,24 +1109,27 @@ public class MessageListenerService extends Service {
                 }
                 reader.close();
 
-                // 解析响应，检查是否有任务
-                String jsonResponse = response.toString();
-                org.json.JSONArray tasksArray = new org.json.JSONArray(jsonResponse);
-                boolean exists = tasksArray.length() > 0;
+                String result = response.toString();
+                Log.d(TAG, "查询结果: " + result);
+
+                // 解析JSON数组，如果有数据说明任务已存在
+                org.json.JSONArray jsonArray = new org.json.JSONArray(result);
+                boolean exists = jsonArray.length() > 0;
 
                 if (exists) {
-                    Log.d(TAG, "今天已存在每日任务，数量: " + tasksArray.length());
+                    Log.d(TAG, "任务已存在: " + title + " (负责人: " + assignee + ")");
+                } else {
+                    Log.d(TAG, "任务不存在，可以创建: " + title + " (负责人: " + assignee + ")");
                 }
 
                 return exists;
             } else {
-                Log.w(TAG, "检查每日任务是否存在失败，响应码: " + responseCode);
-                return false;
+                Log.e(TAG, "查询任务失败，响应码: " + responseCode);
+                return true; // 查询失败时，默认认为不存在，允许创建
             }
-
         } catch (Exception e) {
-            Log.e(TAG, "检查每日任务是否存在异常", e);
-            return false;
+            Log.e(TAG, "检查任务是否存在时发生异常", e);
+            return false; // 异常时，默认认为不存在，允许创建
         }
     }
 
@@ -1171,11 +1174,7 @@ public class MessageListenerService extends Service {
                 return;
             }
 
-            // 通过查询数据库检查今天是否已经创建过每日任务
-            if (checkTaskExistsToday(today)) {
-                // 今天已经创建过每日任务，跳过（不打印日志，避免频繁输出）
-                return;
-            }
+
 
             // 执行到这里说明需要生成任务，打印详细日志
             Log.d(TAG, "检测到需要生成每日待办任务 - 配置: enabled=" + enabled + ", skipHolidays=" + skipHolidays + ", today=" + today);
@@ -1230,7 +1229,11 @@ public class MessageListenerService extends Service {
 
                 // 构建截止时间
                 String deadline = buildDeadlineTime(date, timeStr);
-
+                // 通过查询数据库检查今天是否已经创建过每日任务
+                if (checkTaskExistsToday(supabaseUrl, supabaseAnonKey, supabaseUserId, title, assignee, date)) {
+                    // 今天已经创建过每日任务，跳过（不打印日志，避免频繁输出）
+                    continue;
+                }
                 // 创建任务
                 if (createDailyTask(supabaseUrl, supabaseAnonKey, supabaseUserId, title, priority, category, deadline, assignee)) {
                     createdCount++;
@@ -1279,25 +1282,26 @@ public class MessageListenerService extends Service {
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setRequestProperty("Prefer", "return=minimal");
             connection.setDoOutput(true);
+            String taskId = java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 24);
 
             // 构建任务数据
             org.json.JSONObject taskData = new org.json.JSONObject();
+            taskData.put("id", taskId);
             taskData.put("user_id", supabaseUserId);
             taskData.put("title", title);
-            taskData.put("description", "");
             taskData.put("priority", priority);
             taskData.put("category", category);
             taskData.put("deadline", deadline);
             taskData.put("assignee", assignee);
-            // 使用本地时间格式，不使用UTC标识'Z'
-            taskData.put("created_at", new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault())
-                .format(new java.util.Date()));
+            // 使用本地时间格式，不使用UTC标识
+            taskData.put("created_at", getCurrentLocalTimestamp());
             taskData.put("completed", false);
-            taskData.put("status", "pending");
-            taskData.put("is_daily_todo", true); // 标记为每日待办
+
+            String jsonPayload = taskData.toString();
+            Log.d(TAG, "创建任务JSON: " + jsonPayload);
 
             java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(connection.getOutputStream());
-            writer.write(taskData.toString());
+            writer.write(jsonPayload);
             writer.flush();
             writer.close();
 
@@ -1308,6 +1312,20 @@ public class MessageListenerService extends Service {
 
             if (!success) {
                 Log.e(TAG, "创建任务失败，响应码: " + responseCode);
+                // 读取错误响应
+                try {
+                    java.io.BufferedReader errorReader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(connection.getErrorStream()));
+                    StringBuilder errorResponse = new StringBuilder();
+                    String line;
+                    while ((line = errorReader.readLine()) != null) {
+                        errorResponse.append(line);
+                    }
+                    errorReader.close();
+                    Log.e(TAG, "错误响应: " + errorResponse.toString());
+                } catch (Exception e) {
+                    Log.e(TAG, "读取错误响应失败", e);
+                }
             }
 
             return success;
@@ -1315,6 +1333,14 @@ public class MessageListenerService extends Service {
             Log.e(TAG, "创建每日任务异常", e);
             return false;
         }
+    }
+
+    /**
+     * 格式化当前时间为本地时间ISO字符串（不带时区标识）
+     */
+    private String getCurrentLocalTimestamp() {
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault());
+        return sdf.format(new java.util.Date());
     }
 
     /**

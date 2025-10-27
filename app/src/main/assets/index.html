@@ -7615,6 +7615,29 @@
 
 
     <script>
+        // 解析本地时间字符串（数据库返回的是本地时间，不是UTC）
+        function parseLocalDateTime(dateTimeStr) {
+            if (!dateTimeStr) return null;
+
+            // 如果字符串不包含时区标识，直接解析为本地时间
+            // 格式：yyyy-MM-ddTHH:mm:ss
+            const parts = dateTimeStr.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+            if (parts) {
+                // 使用本地时区构造Date对象
+                return new Date(
+                    parseInt(parts[1]), // year
+                    parseInt(parts[2]) - 1, // month (0-11)
+                    parseInt(parts[3]), // day
+                    parseInt(parts[4]), // hour
+                    parseInt(parts[5]), // minute
+                    parseInt(parts[6])  // second
+                );
+            }
+
+            // 兜底：直接使用Date构造
+            return new Date(dateTimeStr);
+        }
+
         // 全局变量
         let tasks = [];
         let currentFilter = 'all';
@@ -8992,7 +9015,7 @@
 
                 // 只检测有截止时间且截止时间为当日的任务
                 if (!task.deadline) return false;
-                const taskDate = new Date(task.deadline).toDateString();
+                const taskDate = parseLocalDateTime(task.deadline).toDateString();
                 if (taskDate !== today) return false;
 
                 // 检查标题和完成人是否都匹配
@@ -9018,7 +9041,7 @@
                 (t.assignee || '') === assignee &&
                 t.isDailyTodo === true &&
                 t.deadline &&
-                new Date(t.deadline).toDateString() === targetDateString
+                parseLocalDateTime(t.deadline).toDateString() === targetDateString
             );
 
             if (existingDailyTask) {
@@ -9033,7 +9056,7 @@
                 (t.assignee || '') === assignee &&
                 !t.isDailyTodo &&
                 t.deadline &&
-                new Date(t.deadline).toDateString() === targetDateString
+                parseLocalDateTime(t.deadline).toDateString() === targetDateString
             );
 
             if (manualTask) {
@@ -9052,7 +9075,7 @@
             if (anyUncompletedTask) {
                 // 如果存在但不在同一天，则允许创建（用户可能想在不同天重复相同任务）
                 if (anyUncompletedTask.deadline) {
-                    const existingTaskDate = new Date(anyUncompletedTask.deadline).toDateString();
+                    const existingTaskDate = parseLocalDateTime(anyUncompletedTask.deadline).toDateString();
                     if (existingTaskDate !== targetDateString) {
                         console.log(`允许创建每日任务，因为现有同名同人任务在不同日期: ${title} (${assignee || '未分配'})`);
                         return false; // 不跳过，允许创建
@@ -9362,7 +9385,7 @@
                 const sameTitleTask = tasks.find(task =>
                     !task.completed &&
                     task.deadline &&
-                    new Date(task.deadline).toDateString() === today &&
+                    parseLocalDateTime(task.deadline).toDateString() === today &&
                     task.title.trim().toLowerCase() === title.trim().toLowerCase()
                 );
 
@@ -9475,7 +9498,7 @@
                 const sameTitleTask = tasks.find(task =>
                     !task.completed &&
                     task.deadline &&
-                    new Date(task.deadline).toDateString() === today &&
+                    parseLocalDateTime(task.deadline).toDateString() === today &&
                     task.title.trim().toLowerCase() === title.trim().toLowerCase()
                 );
 
@@ -9728,7 +9751,7 @@
             }
 
             // 按完成时间排序，保留最新的5张图片
-            completedTasksWithImages.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+            completedTasksWithImages.sort((a, b) => parseLocalDateTime(b.completedAt) - parseLocalDateTime(a.completedAt));
 
             let cleanedCount = 0;
             const keepCount = 5; // 保留最新的5张图片
@@ -10017,7 +10040,7 @@
                 // 设置完成信息
                 let completionInfo = '';
                 if (task.completedAt) {
-                    completionInfo += `完成时间：${new Date(task.completedAt).toLocaleString('zh-CN')}`;
+                    completionInfo += `完成时间：${parseLocalDateTime(task.completedAt).toLocaleString('zh-CN')}`;
                 }
                 if (task.completionNotes) {
                     completionInfo += `\n完成备注：${task.completionNotes}`;
@@ -10458,7 +10481,7 @@
 
                     // 只检测有截止时间且截止时间为当日的任务
                     if (!t.deadline) return false;
-                    const taskDate = new Date(t.deadline).toDateString();
+                    const taskDate = parseLocalDateTime(t.deadline).toDateString();
                     if (taskDate !== today) return false;
 
                     return t.title.trim().toLowerCase() === title.trim().toLowerCase();
@@ -10721,7 +10744,7 @@
                     filteredTasks = filteredTasks.filter(task => {
                         if (!task.deadline) return currentDateFilter === 'all';
                         
-                        const taskDate = new Date(task.deadline);
+                        const taskDate = parseLocalDateTime(task.deadline);
                         const today = new Date();
                         const tomorrow = new Date(today);
                         tomorrow.setDate(today.getDate() + 1);
@@ -14311,7 +14334,7 @@
             // 获取今日任务
             const todayTasks = tasks.filter(task => {
                 if (!task.deadline || task.completed) return false;
-                const taskDate = new Date(task.deadline).toDateString();
+                const taskDate = parseLocalDateTime(task.deadline).toDateString();
                 return taskDate === today;
             });
 

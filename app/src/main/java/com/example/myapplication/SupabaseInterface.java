@@ -166,7 +166,7 @@ public class SupabaseInterface {
                 // 构建更新数据
                 JSONObject updateData = new JSONObject();
                 updateData.put("is_read", true);
-                updateData.put("read_at", getCurrentUtcTimestamp());
+                updateData.put("read_at", getCurrentLocalTimestamp());
 
                 OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
                 writer.write(updateData.toString());
@@ -421,15 +421,15 @@ public class SupabaseInterface {
                 }
 
                 // 计算清理日期（当前时间减去指定天数）
-                java.util.Calendar calendar = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"));
+                java.util.Calendar calendar = java.util.Calendar.getInstance();
                 calendar.add(java.util.Calendar.DAY_OF_YEAR, -daysOld);
-                String cutoffDate = formatUtcTimestamp(calendar.getTime());
+                String cutoffDate = formatLocalTimestamp(calendar.getTime());
 
                 // 构建删除URL：删除已读且创建时间早于cutoffDate的消息
                 String deleteUrl = supabaseUrl + "/rest/v1/messages" +
                                 "?user_id=eq." + supabaseUserId +
                                 "&is_read=eq.true" +
-                                "&created_at=lt." + cutoffDate;
+                                "&created_at.lt=" + cutoffDate;
 
                 URL url = new URL(deleteUrl);
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -468,20 +468,18 @@ public class SupabaseInterface {
     }
 
     /**
-     * 格式化当前时间为UTC ISO字符串
+     * 格式化当前时间为本地时间ISO字符串（不带时区标识）
      */
-    private String getCurrentUtcTimestamp() {
-        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
-        sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+    private String getCurrentLocalTimestamp() {
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault());
         return sdf.format(new java.util.Date());
     }
 
     /**
-     * 格式化指定时间为UTC ISO字符串
+     * 格式化指定时间为本地时间ISO字符串（不带时区标识）
      */
-    private String formatUtcTimestamp(java.util.Date date) {
-        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
-        sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+    private String formatLocalTimestamp(java.util.Date date) {
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault());
         return sdf.format(date);
     }
 
@@ -518,12 +516,12 @@ public class SupabaseInterface {
             String dateCondition;
             if ("created_at".equals(dateField) || "updated_at".equals(dateField) || "completed_at".equals(dateField)) {
                 // 对于时间戳字段，使用完整的日期时间范围
-                dateCondition = "&" + dateField + "=gte." + today + "T00:00:00" +
-                               "&" + dateField + "=lt." + tomorrow + "T00:00:00";
+                dateCondition = "&" + dateField + ".gte=" + today + "T00:00:00" +
+                               "&" + dateField + ".lt=" + tomorrow + "T00:00:00";
             } else {
                 // 对于日期字段，只使用日期部分
-                dateCondition = "&" + dateField + "=gte." + today +
-                               "&" + dateField + "=lt." + tomorrow;
+                dateCondition = "&" + dateField + ".gte=" + today +
+                               "&" + dateField + ".lt=" + tomorrow;
             }
 
             // 构建查询URL：获取今日任务（assignee字段可能包含多个用户ID，用逗号分割）
@@ -589,11 +587,11 @@ public class SupabaseInterface {
             // 根据不同的日期字段构建查询条件
             String dateCondition;
             if ("created_at".equals(dateField) || "updated_at".equals(dateField) || "completed_at".equals(dateField)) {
-                dateCondition = "&" + dateField + "=gte." + today + "T00:00:00" +
-                               "&" + dateField + "=lt." + tomorrow + "T00:00:00";
+                dateCondition = "&" + dateField + ".gte=" + today + "T00:00:00" +
+                               "&" + dateField + ".lt=" + tomorrow + "T00:00:00";
             } else {
-                dateCondition = "&" + dateField + "=gte." + today +
-                               "&" + dateField + "=lt." + tomorrow;
+                dateCondition = "&" + dateField + ".gte=" + today +
+                               "&" + dateField + ".lt=" + tomorrow;
             }
 
             // 构建查询URL：获取今日完成任务
@@ -644,11 +642,11 @@ public class SupabaseInterface {
             // 根据不同的日期字段构建查询条件
             String dateCondition;
             if ("created_at".equals(dateField) || "updated_at".equals(dateField) || "completed_at".equals(dateField)) {
-                dateCondition = "&" + dateField + "=gte." + today + "T00:00:00" +
-                               "&" + dateField + "=lt." + tomorrow + "T00:00:00";
+                dateCondition = "&" + dateField + ".gte=" + today + "T00:00:00" +
+                               "&" + dateField + ".lt=" + tomorrow + "T00:00:00";
             } else {
-                dateCondition = "&" + dateField + "=gte." + today +
-                               "&" + dateField + "=lt." + tomorrow;
+                dateCondition = "&" + dateField + ".gte=" + today +
+                               "&" + dateField + ".lt=" + tomorrow;
             }
 
             // 构建查询URL：获取今日待完成任务
@@ -686,14 +684,12 @@ public class SupabaseInterface {
             java.util.Date localNow = new java.util.Date();
             java.util.Date localNext24Hours = new java.util.Date(localNow.getTime() + 24 * 60 * 60 * 1000);
 
-            // 使用本地时间格式化
-            java.text.SimpleDateFormat localDateTimeFormat = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", java.util.Locale.getDefault());
-            String nowStr = localDateTimeFormat.format(localNow);
-            String next24HoursStr = localDateTimeFormat.format(localNext24Hours);
+            // 使用本地时间格式化（不带时区标识）
+            String nowStr = formatLocalTimestamp(localNow);
+            String next24HoursStr = formatLocalTimestamp(localNext24Hours);
 
             // 添加本地时间调试日志
-            java.text.SimpleDateFormat localTimeFormat = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault());
-            Log.d(TAG, "本地时间: " + localTimeFormat.format(localNow));
+            Log.d(TAG, "本地时间: " + nowStr);
             Log.d(TAG, "查询即将到期任务时间范围: " + nowStr + " 到 " + next24HoursStr);
 
             // 获取Supabase用户ID用于数据库查询
@@ -705,7 +701,7 @@ public class SupabaseInterface {
                             "?user_id=eq." + supabaseUserId +
                             "&or=(assignee.ilike.%25" + java.net.URLEncoder.encode(userId, "UTF-8") + "%25,assignee.eq." + java.net.URLEncoder.encode(userId, "UTF-8") + ")" +
                             "&completed=eq.false" +
-                            "&deadline=gte." + nowStr +
+                            "&deadline.gte=" + nowStr +
                             "&deadline=lte." + next24HoursStr +
                             "&order=deadline.asc";
 
@@ -731,14 +727,12 @@ public class SupabaseInterface {
                 return "[]";
             }
 
-            // 获取当前本地时间
+            // 获取当前本地时间（不带时区标识）
             java.util.Date localNow = new java.util.Date();
-            java.text.SimpleDateFormat localDateTimeFormat = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", java.util.Locale.getDefault());
-            String nowStr = localDateTimeFormat.format(localNow);
+            String nowStr = formatLocalTimestamp(localNow);
 
             // 添加本地时间调试日志
-            java.text.SimpleDateFormat localTimeFormat = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault());
-            Log.d(TAG, "本地时间: " + localTimeFormat.format(localNow));
+            Log.d(TAG, "本地时间: " + nowStr);
             Log.d(TAG, "查询逾期任务，当前时间: " + nowStr);
 
             // 获取Supabase用户ID用于数据库查询
@@ -750,7 +744,7 @@ public class SupabaseInterface {
                             "?user_id=eq." + supabaseUserId +
                             "&or=(assignee.ilike.%25" + java.net.URLEncoder.encode(userId, "UTF-8") + "%25,assignee.eq." + java.net.URLEncoder.encode(userId, "UTF-8") + ")" +
                             "&completed=eq.false" +
-                            "&deadline=lt." + nowStr +
+                            "&deadline.lt=" + nowStr +
                             "&order=deadline.asc";
 
             return executeGetRequest(queryUrl, supabaseAnonKey);
@@ -1819,6 +1813,8 @@ public class SupabaseInterface {
             taskData.put("deadline", deadline);
             taskData.put("assignee", assignee);
             taskData.put("completed", false);
+            // 使用本地时间设置创建时间
+            taskData.put("created_at", getCurrentLocalTimestamp());
 
             String jsonPayload = taskData.toString();
             Log.d(TAG, "任务数据JSON: " + jsonPayload);

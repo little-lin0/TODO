@@ -12,7 +12,8 @@
       "Bash(adb logcat:*)",
       "Bash(.gradlew.bat assembleDebug --warning-mode all)",
       "Bash(gradlew.bat assembleDebug:*)",
-      "Bash(cmd /c gradlew.bat assembleDebug:*)"
+      "Bash(cmd /c gradlew.bat assembleDebug:*)",
+      "Bash(./gradlew.bat build:*)"
     ],
     "deny": [],
     "ask": []

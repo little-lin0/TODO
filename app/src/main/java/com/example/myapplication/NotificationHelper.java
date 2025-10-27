@@ -88,7 +88,7 @@ public class NotificationHelper {
         Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
 
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification) // 需要添加这个图标
+            .setSmallIcon(R.mipmap.ic_launcher) // 使用应用图标
             .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher))
             .setContentTitle(title)
             .setContentText(message)
@@ -142,7 +142,7 @@ public class NotificationHelper {
             .setSummaryText("点击查看详情");
 
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.mipmap.ic_launcher) // 使用应用图标
             .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher))
             .setContentTitle(message.title)
             .setContentText(message.summary + " (点击查看详情)")
@@ -165,7 +165,7 @@ public class NotificationHelper {
                 context, (int) (message.messageId + 1), viewAllIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );
-            notificationBuilder.addAction(R.drawable.ic_notification, "查看全部", viewAllPendingIntent);
+            notificationBuilder.addAction(R.mipmap.ic_launcher, "查看全部", viewAllPendingIntent);
         }
 
         notificationManager.notify((int) message.messageId, notificationBuilder.build());
