@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>📬 消息中心</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f8f9fa;
+            min-height: 100vh;
+            padding-bottom: 20px;
+        }
+
+        .header {
+            background: white;
+            color: #333;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .back-btn {
+            background: transparent;
+            border: none;
+            color: #667eea;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px 8px;
+            margin-right: 12px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .mark-all-read-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .mark-all-read-btn:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .mark-all-read-btn:active {
+            transform: translateY(0);
+        }
+
+        .mark-all-read-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .container {
+            padding: 16px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            background: white;
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .filter-tab {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            background: #f5f5f5;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.2s ease;
+        }
+
+        .filter-tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .message-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message-card {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .message-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+        .message-card.unread {
+            border-left: 4px solid #667eea;
+            background: #f8f9ff;
+        }
+
+        .message-card.read {
+            opacity: 0.7;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .message-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .unread-badge {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .message-time {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .message-content {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .message-task-title {
+            font-size: 13px;
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 4px 8px;
+            border-radius: 6px;
+            display: inline-block;
+            margin-top: 8px;
+        }
+
+        .message-type-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-top: 8px;
+        }
+
+        .type-task_created {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .type-task_updated {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .type-task_completed {
+            background: #f3e5f5;
+            color: #6a1b9a;
+        }
+
+        .type-task_deleted {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .empty-text {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .empty-hint {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .stats-bar {
+            background: white;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+
+        .stat-item {
+            flex: 1;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <button class="back-btn" onclick="goBack()">←</button>
+            <div class="header-title">📬 消息中心</div>
+        </div>
+        <button class="mark-all-read-btn" id="markAllReadBtn" onclick="markAllAsRead()" disabled>
+            ✓ 全部已读
+        </button>
+    </div>
+
+    <div class="container">
+        <!-- 统计栏 -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-value" id="totalCount">0</div>
+                <div class="stat-label">全部消息</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="unreadCount">0</div>
+                <div class="stat-label">未读消息</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="readCount">0</div>
+                <div class="stat-label">已读消息</div>
+            </div>
+        </div>
+
+        <!-- 筛选标签 -->
+        <div class="filter-tabs">
+            <button class="filter-tab active" onclick="filterMessages('all')">全部</button>
+            <button class="filter-tab" onclick="filterMessages('unread')">未读</button>
+            <button class="filter-tab" onclick="filterMessages('read')">已读</button>
+        </div>
+
+        <!-- 消息列表 -->
+        <div class="message-list" id="messageList">
+            <div class="loading">
+                <div class="spinner"></div>
+                <div style="margin-top: 16px;">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allMessages = [];
+        let currentFilter = 'all';
+        let DATABASE_CONFIG = null;
+
+        window.onload = async function() {
+            // 加载数据库配置
+            loadDatabaseConfig();
+
+            // 加载消息
+            await loadMessages();
+        };
+
+        function loadDatabaseConfig() {
+            DATABASE_CONFIG = {
+                supabaseUrl: localStorage.getItem('supabase_url'),
+                supabaseAnonKey: localStorage.getItem('supabase_anon_key'),
+                userId: localStorage.getItem('supabase_user_id'),
+                tableName: 'messages'
+            };
+
+            if (!DATABASE_CONFIG.supabaseUrl || !DATABASE_CONFIG.supabaseAnonKey || !DATABASE_CONFIG.userId) {
+                alert('数据库配置丢失，请在设置中重新配置');
+                return false;
+            }
+            return true;
+        }
+
+        async function loadMessages() {
+            try {
+                if (!loadDatabaseConfig()) return;
+
+                // 获取当前用户信息
+                const personalInfoStr = localStorage.getItem('personalInfo');
+                const personalInfo = personalInfoStr ? JSON.parse(personalInfoStr) : null;
+                const currentUser = personalInfo?.myAssignee || '';
+
+                // 查询消息
+                const response = await fetch(
+                    `${DATABASE_CONFIG.supabaseUrl}/rest/v1/${DATABASE_CONFIG.tableName}?` +
+                    `user_id=eq.${DATABASE_CONFIG.userId}&` +
+                    `receiver_id=eq.${currentUser}&` +
+                    `order=created_at.desc`,
+                    {
+                        headers: {
+                            'apikey': DATABASE_CONFIG.supabaseAnonKey,
+                            'Authorization': `Bearer ${DATABASE_CONFIG.supabaseAnonKey}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+
+                if (response.ok) {
+                    allMessages = await response.json();
+                    updateStats();
+                    displayMessages();
+                } else {
+                    throw new Error('加载消息失败');
+                }
+            } catch (error) {
+                console.error('加载消息失败:', error);
+                document.getElementById('messageList').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">⚠️</div>
+                        <div class="empty-text">加载失败</div>
+                        <div class="empty-hint">${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        function updateStats() {
+            const totalCount = allMessages.length;
+            const unreadCount = allMessages.filter(m => !m.is_read).length;
+            const readCount = totalCount - unreadCount;
+
+            document.getElementById('totalCount').textContent = totalCount;
+            document.getElementById('unreadCount').textContent = unreadCount;
+            document.getElementById('readCount').textContent = readCount;
+
+            // 更新一键已读按钮状态
+            const markAllReadBtn = document.getElementById('markAllReadBtn');
+            markAllReadBtn.disabled = unreadCount === 0;
+        }
+
+        function filterMessages(filter) {
+            currentFilter = filter;
+
+            // 更新标签样式
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // 显示过滤后的消息
+            displayMessages();
+        }
+
+        function displayMessages() {
+            const messageList = document.getElementById('messageList');
+
+            // 过滤消息
+            let filteredMessages = allMessages;
+            if (currentFilter === 'unread') {
+                filteredMessages = allMessages.filter(m => !m.is_read);
+            } else if (currentFilter === 'read') {
+                filteredMessages = allMessages.filter(m => m.is_read);
+            }
+
+            if (filteredMessages.length === 0) {
+                const emptyIcon = currentFilter === 'unread' ? '📭' : '📬';
+                const emptyText = currentFilter === 'unread' ? '暂无未读消息' : '暂无消息';
+                messageList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">${emptyIcon}</div>
+                        <div class="empty-text">${emptyText}</div>
+                        <div class="empty-hint">消息会显示在这里</div>
+                    </div>
+                `;
+                return;
+            }
+
+            // 渲染消息列表
+            messageList.innerHTML = filteredMessages.map(message => {
+                const isUnread = !message.is_read;
+                const typeClass = `type-${message.message_type || 'other'}`;
+                const time = formatTime(message.created_at);
+
+                return `
+                    <div class="message-card ${isUnread ? 'unread' : 'read'}"
+                         onclick="handleMessageClick(${message.id})">
+                        <div class="message-header">
+                            <div class="message-title">
+                                ${isUnread ? '<span class="unread-badge"></span>' : ''}
+                                ${message.title || '消息通知'}
+                            </div>
+                            <div class="message-time">${time}</div>
+                        </div>
+                        <div class="message-content">
+                            ${message.content || ''}
+                        </div>
+                        ${message.task_title ? `<div class="message-task-title">📋 ${message.task_title}</div>` : ''}
+                        <span class="message-type-badge ${typeClass}">
+                            ${getMessageTypeText(message.message_type)}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function formatTime(dateTimeStr) {
+            if (!dateTimeStr) return '';
+            const date = new Date(dateTimeStr);
+            const now = new Date();
+            const diff = now - date;
+
+            // 1分钟内
+            if (diff < 60000) return '刚刚';
+            // 1小时内
+            if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
+            // 24小时内
+            if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
+            // 7天内
+            if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
+
+            // 超过7天显示日期
+            return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function getMessageTypeText(type) {
+            const types = {
+                'task_created': '新任务',
+                'task_updated': '任务更新',
+                'task_completed': '任务完成',
+                'task_deleted': '任务删除',
+                'daily_task': '每日任务',
+                'deadline_warning': '即将到期',
+                'overdue_warning': '已超期'
+            };
+            return types[type] || '通知';
+        }
+
+        async function handleMessageClick(messageId) {
+            const message = allMessages.find(m => m.id === messageId);
+            if (!message) return;
+
+            // 如果是未读消息，标记为已读
+            if (!message.is_read) {
+                await markMessageAsRead(messageId);
+            }
+
+            // TODO: 如果有关联任务，可以跳转到任务详情页
+            if (message.task_id) {
+                // window.location.href = `task_detail.html?id=${message.task_id}`;
+            }
+        }
+
+        async function markMessageAsRead(messageId) {
+            try {
+                const response = await fetch(
+                    `${DATABASE_CONFIG.supabaseUrl}/rest/v1/${DATABASE_CONFIG.tableName}?id=eq.${messageId}`,
+                    {
+                        method: 'PATCH',
+                        headers: {
+                            'apikey': DATABASE_CONFIG.supabaseAnonKey,
+                            'Authorization': `Bearer ${DATABASE_CONFIG.supabaseAnonKey}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=minimal'
+                        },
+                        body: JSON.stringify({
+                            is_read: true,
+                            read_at: new Date().toISOString()
+                        })
+                    }
+                );
+
+                if (response.ok) {
+                    // 更新本地数据
+                    const message = allMessages.find(m => m.id === messageId);
+                    if (message) {
+                        message.is_read = true;
+                        message.read_at = new Date().toISOString();
+                    }
+                    updateStats();
+                    displayMessages();
+                }
+            } catch (error) {
+                console.error('标记已读失败:', error);
+            }
+        }
+
+        async function markAllAsRead() {
+            try {
+                const unreadMessages = allMessages.filter(m => !m.is_read);
+                if (unreadMessages.length === 0) return;
+
+                // 确认操作
+                if (!confirm(`确定要将 ${unreadMessages.length} 条未读消息全部标记为已读吗？`)) {
+                    return;
+                }
+
+                // 禁用按钮
+                const btn = document.getElementById('markAllReadBtn');
+                btn.disabled = true;
+                btn.textContent = '处理中...';
+
+                // 获取当前用户
+                const personalInfoStr = localStorage.getItem('personalInfo');
+                const personalInfo = personalInfoStr ? JSON.parse(personalInfoStr) : null;
+                const currentUser = personalInfo?.myAssignee || '';
+
+                // 批量更新
+                const response = await fetch(
+                    `${DATABASE_CONFIG.supabaseUrl}/rest/v1/${DATABASE_CONFIG.tableName}?` +
+                    `user_id=eq.${DATABASE_CONFIG.userId}&` +
+                    `receiver_id=eq.${currentUser}&` +
+                    `is_read=eq.false`,
+                    {
+                        method: 'PATCH',
+                        headers: {
+                            'apikey': DATABASE_CONFIG.supabaseAnonKey,
+                            'Authorization': `Bearer ${DATABASE_CONFIG.supabaseAnonKey}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=minimal'
+                        },
+                        body: JSON.stringify({
+                            is_read: true,
+                            read_at: new Date().toISOString()
+                        })
+                    }
+                );
+
+                if (response.ok) {
+                    // 更新本地数据
+                    allMessages.forEach(m => {
+                        if (!m.is_read) {
+                            m.is_read = true;
+                            m.read_at = new Date().toISOString();
+                        }
+                    });
+
+                    updateStats();
+                    displayMessages();
+
+                    // 显示成功提示
+                    alert(`已将 ${unreadMessages.length} 条消息标记为已读`);
+                } else {
+                    throw new Error('批量标记失败');
+                }
+
+                btn.textContent = '✓ 全部已读';
+            } catch (error) {
+                console.error('一键已读失败:', error);
+                alert('操作失败: ' + error.message);
+                document.getElementById('markAllReadBtn').disabled = false;
+                document.getElementById('markAllReadBtn').textContent = '✓ 全部已读';
+            }
+        }
+
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

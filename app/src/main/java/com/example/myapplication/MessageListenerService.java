@@ -1,11 +1,13 @@
 package com.example.myapplication;
 
+import android.annotation.SuppressLint;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -102,27 +104,20 @@ public class MessageListenerService extends Service {
     }
 
     /**
-     * 注册新消息广播接收器（兼容Android 13+）
+     * 注册新消息广播接收器（Android 14+）
      */
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private void registerNewMessageReceiver(IntentFilter filter) {
         try {
-            if (android.os.Build.VERSION.SDK_INT >= 33) { // Android 13 (TIRAMISU)
-                // 使用反射来安全地调用新的API
-                try {
-                    // 尝试使用 Context.RECEIVER_NOT_EXPORTED 常量
-                    java.lang.reflect.Field field = Context.class.getDeclaredField("RECEIVER_NOT_EXPORTED");
-                    int flag = field.getInt(null);
-                    registerReceiver(newMessageReceiver, filter, flag);
-                    Log.d(TAG, "使用RECEIVER_NOT_EXPORTED标志注册广播接收器");
-                } catch (Exception reflectionException) {
-                    // 如果反射失败，使用数值常量
-                    registerReceiver(newMessageReceiver, filter, 2); // RECEIVER_NOT_EXPORTED = 2
-                    Log.d(TAG, "使用数值常量注册广播接收器");
-                }
+            // 项目 minSdk = 34 (Android 14)，使用 RECEIVER_NOT_EXPORTED
+            // Android 14+ (API 34+) 要求必须指定 receiver flag
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                registerReceiver(newMessageReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+                Log.d(TAG, "使用RECEIVER_NOT_EXPORTED标志注册广播接收器");
             } else {
-                // Android 12及以下版本
-                registerReceiver(newMessageReceiver, filter);
-                Log.d(TAG, "使用传统方式注册广播接收器");
+                // Fallback（理论上不会执行，因为minSdk=34）
+                registerReceiver(newMessageReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+                Log.d(TAG, "Fallback: 使用RECEIVER_NOT_EXPORTED标志注册广播接收器");
             }
         } catch (Exception e) {
             Log.e(TAG, "注册广播接收器失败", e);
@@ -607,6 +602,17 @@ public class MessageListenerService extends Service {
                     sentDeadlineWarnings.add(warningKey);
                     newDeadlineTasks.add(task);
                     Log.d(TAG, "新增任务即将超时提醒: " + task.title);
+
+                    // 将即将到期任务消息记录到messages表
+                    String supabaseUrl = supabaseInterface.getSupabaseUrl();
+                    String supabaseAnonKey = supabaseInterface.getSupabaseAnonKey();
+                    String supabaseUserId = supabaseInterface.getSupabaseUserId();
+                    if (supabaseUrl != null && !supabaseUrl.isEmpty() &&
+                        supabaseAnonKey != null && !supabaseAnonKey.isEmpty() &&
+                        supabaseUserId != null && !supabaseUserId.isEmpty()) {
+                        createTaskNotificationMessage(supabaseUrl, supabaseAnonKey, supabaseUserId,
+                            String.valueOf(task.id), task.title, "deadline_warning", task.assignee);
+                    }
                 } else {
                     Log.d(TAG, "跳过重复提醒: " + task.title + " (key: " + warningKey + ")");
                 }
@@ -704,6 +710,17 @@ public class MessageListenerService extends Service {
                         sentOverdueWarnings.add(overdueKey);
                         newOverdueTasks.add(task);
                         Log.d(TAG, "新增逾期任务提醒: " + task.title);
+
+                        // 将逾期任务消息记录到messages表
+                        String supabaseUrl = supabaseInterface.getSupabaseUrl();
+                        String supabaseAnonKey = supabaseInterface.getSupabaseAnonKey();
+                        String supabaseUserId = supabaseInterface.getSupabaseUserId();
+                        if (supabaseUrl != null && !supabaseUrl.isEmpty() &&
+                            supabaseAnonKey != null && !supabaseAnonKey.isEmpty() &&
+                            supabaseUserId != null && !supabaseUserId.isEmpty()) {
+                            createTaskNotificationMessage(supabaseUrl, supabaseAnonKey, supabaseUserId,
+                                String.valueOf(task.id), task.title, "overdue_warning", task.assignee);
+                        }
                     } else {
                         Log.d(TAG, "跳过重复逾期提醒: " + task.title + " (key: " + overdueKey + ")");
                     }
@@ -811,6 +828,9 @@ public class MessageListenerService extends Service {
                 Log.w(TAG, "当前用户ID为空，跳过消息检查");
                 return;
             }
+
+            // 检查任务通知消息
+            checkTaskNotificationMessages();
 
             // 从Supabase获取未读消息
             String messagesJson = supabaseInterface.getUnreadMessages(currentUserId);
@@ -1235,9 +1255,10 @@ public class MessageListenerService extends Service {
                     continue;
                 }
                 // 创建任务
-                if (createDailyTask(supabaseUrl, supabaseAnonKey, supabaseUserId, title, priority, category, deadline, assignee)) {
+                String createdTaskId = createDailyTask(supabaseUrl, supabaseAnonKey, supabaseUserId, title, priority, category, deadline, assignee);
+                if (createdTaskId != null) {
                     createdCount++;
-                    Log.d(TAG, "创建每日待办任务成功: " + title);
+                    Log.d(TAG, "创建每日待办任务成功: " + title + ", ID: " + createdTaskId);
                 }
             }
 
@@ -1268,8 +1289,9 @@ public class MessageListenerService extends Service {
 
     /**
      * 创建每日任务到Supabase
+     * @return 任务ID，如果创建失败返回null
      */
-    private boolean createDailyTask(String supabaseUrl, String supabaseAnonKey, String supabaseUserId,
+    private String createDailyTask(String supabaseUrl, String supabaseAnonKey, String supabaseUserId,
                                     String title, String priority, String category, String deadline, String assignee) {
         try {
             String createUrl = supabaseUrl + "/rest/v1/tasks";
@@ -1328,10 +1350,15 @@ public class MessageListenerService extends Service {
                 }
             }
 
-            return success;
+            // 如果创建成功，生成消息通知
+            if (success) {
+                createTaskNotificationMessage(supabaseUrl, supabaseAnonKey, supabaseUserId, taskId, title, "daily_task", assignee);
+                return taskId;
+            }
+            return null;
         } catch (Exception e) {
             Log.e(TAG, "创建每日任务异常", e);
-            return false;
+            return null;
         }
     }
 
@@ -1341,6 +1368,371 @@ public class MessageListenerService extends Service {
     private String getCurrentLocalTimestamp() {
         java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault());
         return sdf.format(new java.util.Date());
+    }
+
+    /**
+     * 创建任务通知消息到数据库
+     * 适配现有messages表结构: sender_id, receiver_id, task_id, message_type, title, content, task_title, is_read, user_id
+     * @param assignees 任务完成人，多个完成人用逗号分隔，为每个完成人创建一条消息
+     */
+    private void createTaskNotificationMessage(String supabaseUrl, String supabaseAnonKey, String supabaseUserId,
+                                                String taskId, String taskTitle, String messageType, String assignees) {
+        new Thread(() -> {
+            try {
+                // 处理assignees参数：可能是单个完成人或逗号分隔的多个完成人
+                if (assignees == null || assignees.trim().isEmpty()) {
+                    Log.w(TAG, "任务完成人为空，无法创建消息: taskId=" + taskId);
+                    return;
+                }
+
+                // 分割完成人（支持逗号分隔）
+                String[] assigneeArray = assignees.split(",");
+                Log.d(TAG, "为任务 " + taskId + " 创建消息，完成人数量: " + assigneeArray.length);
+
+                // 构建消息内容（所有完成人共享相同的内容）
+                String messageContent = buildMessageContent(taskTitle, messageType);
+                String messageTitle = buildMessageTitle(messageType);
+
+                // 为每个完成人创建一条消息
+                for (String assignee : assigneeArray) {
+                    String trimmedAssignee = assignee.trim();
+                    if (trimmedAssignee.isEmpty()) {
+                        continue;
+                    }
+
+                    // 检查该完成人是否已有相同消息（重复性校验）
+                    if (checkMessageExistsForReceiver(supabaseUrl, supabaseAnonKey, supabaseUserId, taskId, messageType, trimmedAssignee)) {
+                        Log.d(TAG, "消息已存在，跳过创建: taskId=" + taskId + ", receiver=" + trimmedAssignee + ", type=" + messageType);
+                        continue;
+                    }
+
+                    // 为该完成人创建消息
+                    createMessageForAssignee(supabaseUrl, supabaseAnonKey, supabaseUserId, taskId, taskTitle, messageType,
+                                            trimmedAssignee, messageTitle, messageContent);
+                }
+
+            } catch (Exception e) {
+                Log.e(TAG, "创建任务通知消息异常", e);
+            }
+        }).start();
+    }
+
+    /**
+     * 为单个完成人创建消息记录
+     */
+    private void createMessageForAssignee(String supabaseUrl, String supabaseAnonKey, String supabaseUserId,
+                                           String taskId, String taskTitle, String messageType, String assignee,
+                                           String messageTitle, String messageContent) {
+        try {
+            String createUrl = supabaseUrl + "/rest/v1/messages";
+
+            java.net.URL url = new java.net.URL(createUrl);
+            java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("apikey", supabaseAnonKey);
+            connection.setRequestProperty("Authorization", "Bearer " + supabaseAnonKey);
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("Prefer", "return=minimal");
+            connection.setDoOutput(true);
+
+            // 构建消息数据（适配现有表结构）
+            org.json.JSONObject messageData = new org.json.JSONObject();
+            messageData.put("sender_id", "system"); // 系统消息
+            messageData.put("receiver_id", assignee); // 接收者 = 任务完成人
+            messageData.put("user_id", supabaseUserId); // Supabase用户ID
+            messageData.put("task_id", taskId); // 任务ID
+            messageData.put("message_type", messageType); // 消息类型
+            messageData.put("title", messageTitle); // 消息标题
+            messageData.put("content", messageContent); // 消息内容
+            messageData.put("task_title", taskTitle); // 任务标题
+            messageData.put("is_read", false); // 未读
+            // created_at会自动使用数据库默认值now()
+
+            String jsonPayload = messageData.toString();
+            Log.d(TAG, "创建消息JSON (receiver=" + assignee + "): " + jsonPayload);
+
+            java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(connection.getOutputStream());
+            writer.write(jsonPayload);
+            writer.flush();
+            writer.close();
+
+            int responseCode = connection.getResponseCode();
+            boolean success = responseCode == java.net.HttpURLConnection.HTTP_OK ||
+                    responseCode == java.net.HttpURLConnection.HTTP_CREATED ||
+                    responseCode == java.net.HttpURLConnection.HTTP_NO_CONTENT;
+
+            if (success) {
+                Log.d(TAG, "创建消息成功 (receiver=" + assignee + "): " + messageContent);
+            } else {
+                Log.e(TAG, "创建消息失败 (receiver=" + assignee + ")，响应码: " + responseCode);
+            }
+
+            connection.disconnect();
+        } catch (Exception e) {
+            Log.e(TAG, "为完成人创建消息异常: " + assignee, e);
+        }
+    }
+
+    /**
+     * 检查指定接收者的消息是否已存在（重复性校验）
+     */
+    private boolean checkMessageExistsForReceiver(String supabaseUrl, String supabaseAnonKey, String supabaseUserId,
+                                                   String taskId, String messageType, String receiverId) {
+        try {
+            // 获取今天的日期范围
+            java.util.Calendar calendar = java.util.Calendar.getInstance();
+            java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
+            String today = dateFormat.format(calendar.getTime());
+
+            calendar.add(java.util.Calendar.DAY_OF_MONTH, 1);
+            String tomorrow = dateFormat.format(calendar.getTime());
+
+            String queryUrl = supabaseUrl + "/rest/v1/messages?user_id=eq." + supabaseUserId +
+                    "&task_id=eq." + taskId +
+                    "&message_type=eq." + messageType +
+                    "&receiver_id=eq." + receiverId +
+                    "&created_at.gte=" + today + "T00:00:00" +
+                    "&created_at.lt=" + tomorrow + "T00:00:00" +
+                    "&select=id";
+
+            java.net.URL url = new java.net.URL(queryUrl);
+            java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("apikey", supabaseAnonKey);
+            connection.setRequestProperty("Authorization", "Bearer " + supabaseAnonKey);
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode == java.net.HttpURLConnection.HTTP_OK) {
+                java.io.BufferedReader reader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(connection.getInputStream()));
+                StringBuilder response = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                reader.close();
+
+                org.json.JSONArray jsonArray = new org.json.JSONArray(response.toString());
+                boolean exists = jsonArray.length() > 0;
+                Log.d(TAG, "检查消息是否存在: taskId=" + taskId + ", receiver=" + receiverId + ", exists=" + exists);
+                return exists;
+            }
+
+            connection.disconnect();
+        } catch (Exception e) {
+            Log.e(TAG, "检查消息是否存在失败", e);
+        }
+        return false;
+    }
+
+    /**
+     * 检查消息是否已存在（旧版本，保留兼容性）
+     */
+    @Deprecated
+    private boolean checkMessageExists(String supabaseUrl, String supabaseAnonKey, String supabaseUserId,
+                                        String taskId, String messageType) {
+        try {
+            // 获取今天的日期范围
+            java.util.Calendar calendar = java.util.Calendar.getInstance();
+            java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
+            String today = dateFormat.format(calendar.getTime());
+
+            calendar.add(java.util.Calendar.DAY_OF_MONTH, 1);
+            String tomorrow = dateFormat.format(calendar.getTime());
+
+            String queryUrl = supabaseUrl + "/rest/v1/messages?user_id=eq." + supabaseUserId +
+                    "&task_id=eq." + taskId +
+                    "&message_type=eq." + messageType +
+                    "&created_at.gte=" + today + "T00:00:00" +
+                    "&created_at.lt=" + tomorrow + "T00:00:00" +
+                    "&select=id";
+
+            java.net.URL url = new java.net.URL(queryUrl);
+            java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("apikey", supabaseAnonKey);
+            connection.setRequestProperty("Authorization", "Bearer " + supabaseAnonKey);
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode == java.net.HttpURLConnection.HTTP_OK) {
+                java.io.BufferedReader reader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(connection.getInputStream()));
+                StringBuilder response = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                reader.close();
+
+                org.json.JSONArray jsonArray = new org.json.JSONArray(response.toString());
+                boolean exists = jsonArray.length() > 0;
+                Log.d(TAG, "检查消息是否存在: taskId=" + taskId + ", exists=" + exists);
+                return exists;
+            }
+
+            connection.disconnect();
+        } catch (Exception e) {
+            Log.e(TAG, "检查消息是否存在失败", e);
+        }
+        return false;
+    }
+
+    /**
+     * 构建消息标题
+     */
+    private String buildMessageTitle(String messageType) {
+        switch (messageType) {
+            case "daily_task":
+                return "📋 每日任务提醒";
+            case "deadline_warning":
+                return "⏰ 任务截止提醒";
+            case "overdue_warning":
+                return "⚠️ 任务逾期提醒";
+            default:
+                return "📢 系统通知";
+        }
+    }
+
+    /**
+     * 构建消息内容
+     */
+    private String buildMessageContent(String taskTitle, String messageType) {
+        switch (messageType) {
+            case "daily_task":
+                return "您的每日待办任务已自动生成：" + taskTitle;
+            case "deadline_warning":
+                return "任务「" + taskTitle + "」即将到期，请及时完成！";
+            case "overdue_warning":
+                return "任务「" + taskTitle + "」已经逾期，请尽快处理！";
+            default:
+                return "新任务通知：" + taskTitle;
+        }
+    }
+
+    /**
+     * 立即发送通知
+     */
+    private void sendImmediateNotification(String title, String message) {
+        mainHandler.post(() -> {
+            notificationHelper.showTaskNotification(title, message, 0);
+            Log.d(TAG, "立即发送通知: " + title + " - " + message);
+        });
+    }
+
+    /**
+     * 检查任务通知消息表中的未读消息
+     * 适配现有表结构：receiver_id, message_type, content等字段
+     */
+    private void checkTaskNotificationMessages() {
+        new Thread(() -> {
+            try {
+                String supabaseUrl = supabaseInterface.getSupabaseUrl();
+                String supabaseAnonKey = supabaseInterface.getSupabaseAnonKey();
+
+                if (supabaseUrl == null || supabaseAnonKey == null) {
+                    return;
+                }
+
+                // 查询未读的系统消息（sender_id=system, receiver_id=当前用户）
+                String queryUrl = supabaseUrl + "/rest/v1/messages?receiver_id=eq." + currentUserId +
+                        "&sender_id=eq.system" +
+                        "&is_read=eq.false" +
+                        "&order=created_at.desc" +
+                        "&limit=50";
+
+                java.net.URL url = new java.net.URL(queryUrl);
+                java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("GET");
+                connection.setRequestProperty("apikey", supabaseAnonKey);
+                connection.setRequestProperty("Authorization", "Bearer " + supabaseAnonKey);
+
+                int responseCode = connection.getResponseCode();
+                if (responseCode == java.net.HttpURLConnection.HTTP_OK) {
+                    java.io.BufferedReader reader = new java.io.BufferedReader(
+                            new java.io.InputStreamReader(connection.getInputStream()));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    reader.close();
+
+                    org.json.JSONArray jsonArray = new org.json.JSONArray(response.toString());
+
+                    // 处理每条未读消息
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        org.json.JSONObject messageObj = jsonArray.getJSONObject(i);
+                        long messageId = messageObj.getLong("id"); // bigserial类型，直接获取long
+
+                        // 检查是否已经显示过
+                        if (!displayedMessageIds.contains(messageId)) {
+                            displayedMessageIds.add(messageId);
+
+                            String title = messageObj.getString("title");
+                            String content = messageObj.getString("content");
+
+                            // 在主线程发送通知
+                            mainHandler.post(() -> {
+                                notificationHelper.showTaskNotification(title, content, 0);
+                                Log.d(TAG, "显示任务通知消息: " + title + " - " + content);
+                            });
+
+                            // 标记消息为已读
+                            markMessageAsRead(supabaseUrl, supabaseAnonKey, String.valueOf(messageId));
+                        }
+                    }
+                }
+
+                connection.disconnect();
+            } catch (Exception e) {
+                Log.e(TAG, "检查任务通知消息失败", e);
+            }
+        }).start();
+    }
+
+    /**
+     * 标记消息为已读
+     * 更新is_read为true，并设置read_at时间戳
+     */
+    private void markMessageAsRead(String supabaseUrl, String supabaseAnonKey, String messageId) {
+        new Thread(() -> {
+            try {
+                String updateUrl = supabaseUrl + "/rest/v1/messages?id=eq." + messageId;
+
+                java.net.URL url = new java.net.URL(updateUrl);
+                java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("PATCH");
+                connection.setRequestProperty("apikey", supabaseAnonKey);
+                connection.setRequestProperty("Authorization", "Bearer " + supabaseAnonKey);
+                connection.setRequestProperty("Content-Type", "application/json");
+                connection.setDoOutput(true);
+
+                // 获取当前时间（ISO 8601格式，带时区）
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", java.util.Locale.getDefault());
+                String readAt = sdf.format(new java.util.Date());
+
+                org.json.JSONObject updateData = new org.json.JSONObject();
+                updateData.put("is_read", true);
+                updateData.put("read_at", readAt); // 设置已读时间
+
+                java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(connection.getOutputStream());
+                writer.write(updateData.toString());
+                writer.flush();
+                writer.close();
+
+                int responseCode = connection.getResponseCode();
+                if (responseCode == java.net.HttpURLConnection.HTTP_OK ||
+                    responseCode == java.net.HttpURLConnection.HTTP_NO_CONTENT) {
+                    Log.d(TAG, "标记消息为已读成功: messageId=" + messageId);
+                } else {
+                    Log.e(TAG, "标记消息为已读失败，响应码: " + responseCode);
+                }
+
+                connection.disconnect();
+            } catch (Exception e) {
+                Log.e(TAG, "标记消息为已读失败", e);
+            }
+        }).start();
     }
 
     /**

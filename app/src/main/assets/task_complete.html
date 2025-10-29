@@ -871,6 +871,15 @@
                 if (response.ok) {
                     console.log('任务完成状态API更新成功');
 
+                    // 发送完成通知给其他完成人
+                    await sendTaskNotificationToAssignees(
+                        DATABASE_CONFIG,
+                        taskData.id,
+                        taskData.title,
+                        'task_completed',
+                        taskData.assignees
+                    );
+
                     // 保存完成信息供主页面使用
                     const completeObj = {
                         task_id: taskData.id,
@@ -891,6 +900,82 @@
                 console.error('更新任务完成状态失败:', error);
                 alert('标记任务完成失败: ' + error.message + '\n\n请检查网络连接后重试');
             }
+        }
+
+        // 发送任务通知给其他完成人
+        async function sendTaskNotificationToAssignees(dbConfig, taskId, taskTitle, messageType, assignees) {
+            try {
+                const personalInfoStr = localStorage.getItem('personalInfo');
+                if (!personalInfoStr || !assignees || assignees.length === 0) {
+                    return;
+                }
+
+                const personalInfo = JSON.parse(personalInfoStr);
+                const currentUser = personalInfo.myAssignee || '我';
+
+                // 过滤掉自己，只发给其他完成人
+                const otherAssignees = assignees.filter(assignee => assignee !== currentUser);
+
+                if (otherAssignees.length === 0) {
+                    console.log('没有其他完成人需要通知');
+                    return;
+                }
+
+                const messageTitle = getMessageTitle(messageType);
+                const messageContent = getMessageContent(messageType, currentUser, taskTitle);
+
+                const promises = otherAssignees.map(async (receiver) => {
+                    const messageData = {
+                        sender_id: currentUser,
+                        receiver_id: receiver,
+                        user_id: dbConfig.userId,
+                        task_id: taskId,
+                        message_type: messageType,
+                        title: messageTitle,
+                        content: messageContent,
+                        task_title: taskTitle,
+                        is_read: false
+                    };
+
+                    await fetch(`${dbConfig.supabaseUrl}/rest/v1/messages`, {
+                        method: 'POST',
+                        headers: {
+                            'apikey': dbConfig.supabaseAnonKey,
+                            'Authorization': `Bearer ${dbConfig.supabaseAnonKey}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=minimal'
+                        },
+                        body: JSON.stringify(messageData)
+                    });
+                });
+
+                await Promise.all(promises);
+                console.log('任务完成通知已发送给其他完成人');
+            } catch (error) {
+                console.error('发送任务通知失败:', error);
+            }
+        }
+
+        // 获取消息标题
+        function getMessageTitle(messageType) {
+            const titles = {
+                'task_created': '📝 新任务',
+                'task_updated': '🔄 任务更新',
+                'task_deleted': '🗑️ 任务删除',
+                'task_completed': '✅ 任务完成'
+            };
+            return titles[messageType] || '📬 任务通知';
+        }
+
+        // 获取消息内容
+        function getMessageContent(messageType, senderName, taskTitle) {
+            const contents = {
+                'task_created': `${senderName} 创建了任务「${taskTitle}」`,
+                'task_updated': `${senderName} 更新了任务「${taskTitle}」`,
+                'task_deleted': `${senderName} 删除了任务「${taskTitle}」`,
+                'task_completed': `${senderName} 完成了任务「${taskTitle}」`
+            };
+            return contents[messageType] || `${senderName} 操作了任务「${taskTitle}」`;
         }
 
         function goBack() {

@@ -116,6 +116,13 @@ public class NotificationHelper {
     }
 
     /**
+     * 显示任务通知（带消息ID）
+     */
+    public void showTaskNotification(String title, String message, long messageId) {
+        showNotification(title, message, "系统通知", messageId);
+    }
+
+    /**
      * 显示可折叠的系统通知
      */
     public void showExpandableNotification(ExpandableMessage message) {

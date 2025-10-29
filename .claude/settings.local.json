@@ -13,7 +13,12 @@
       "Bash(.gradlew.bat assembleDebug --warning-mode all)",
       "Bash(gradlew.bat assembleDebug:*)",
       "Bash(cmd /c gradlew.bat assembleDebug:*)",
-      "Bash(./gradlew.bat build:*)"
+      "Bash(./gradlew.bat build:*)",
+      "Bash(powershell:*)",
+      "Bash(findstr:*)",
+      "Bash(cmd /c:*)",
+      "Bash(./gradlew.bat clean:*)",
+      "Read(//d/**)"
     ],
     "deny": [],
     "ask": []

@@ -7240,6 +7240,18 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- 消息中心入口 -->
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #5568d3 100%); color: white; padding: 16px; border-radius: 10px; cursor: pointer; transition: transform 0.2s ease; position: relative;" onclick="goToMessageCenter()">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="font-size: 24px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.2); border-radius: 10px;">📬</div>
+                                <div style="flex: 1;">
+                                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 3px;">消息中心</div>
+                                    <div style="font-size: 12px; opacity: 0.9;">查看任务通知消息</div>
+                                </div>
+                                <div id="messageBadge" style="display: none; background: #ff4444; color: white; font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 12px; min-width: 24px; text-align: center;">0</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -8125,6 +8137,24 @@
 
             try {
                 showLoading('正在删除任务...', '从云端移除任务');
+
+                // 删除前先获取任务信息（用于发送通知）
+                const taskInfoResponse = await fetch(`${DATABASE_CONFIG.supabaseUrl}/rest/v1/${DATABASE_CONFIG.tableName}?id=eq.${taskId}&select=title,assignee,assignees`, {
+                    headers: {
+                        'apikey': DATABASE_CONFIG.supabaseAnonKey,
+                        'Authorization': `Bearer ${DATABASE_CONFIG.supabaseAnonKey}`
+                    }
+                });
+
+                let taskInfo = null;
+                if (taskInfoResponse.ok) {
+                    const data = await taskInfoResponse.json();
+                    if (data && data.length > 0) {
+                        taskInfo = data[0];
+                    }
+                }
+
+                // 执行删除
                 const response = await fetch(`${DATABASE_CONFIG.supabaseUrl}/rest/v1/${DATABASE_CONFIG.tableName}?id=eq.${taskId}`, {
                     method: 'DELETE',
                     headers: {
@@ -8136,6 +8166,19 @@
 
                 if (response.ok) {
                     console.log('成功删除任务:', taskId);
+
+                    // 发送删除通知给完成人
+                    if (taskInfo) {
+                        const assignees = taskInfo.assignees || (taskInfo.assignee ? taskInfo.assignee.split(',') : []);
+                        await sendTaskNotificationToAssignees(
+                            DATABASE_CONFIG,
+                            taskId,
+                            taskInfo.title,
+                            'task_deleted',
+                            assignees
+                        );
+                    }
+
                     return true;
                 } else {
                     const errorText = await response.text();
@@ -17490,6 +17533,166 @@
             console.log('对应的本地显示:', new Date(currentLocalTime).toLocaleString('zh-CN'));
         }
 
+        /**
+         * 发送任务通知消息给完成人（排除自己）
+         */
+        async function sendTaskNotificationToAssignees(dbConfig, taskId, taskTitle, messageType, assignees) {
+            try {
+                const personalInfoStr = localStorage.getItem('personalInfo');
+                if (!personalInfoStr || !assignees || assignees.length === 0) {
+                    return;
+                }
+
+                const personalInfo = JSON.parse(personalInfoStr);
+                const currentUser = personalInfo.myAssignee || '我';
+                const otherAssignees = assignees.filter(assignee => assignee !== currentUser);
+
+                if (otherAssignees.length === 0) {
+                    return;
+                }
+
+                const messageTitle = getMessageTitle(messageType);
+                const messageContent = getMessageContent(messageType, currentUser, taskTitle);
+
+                const promises = otherAssignees.map(async (receiver) => {
+                    const messageData = {
+                        sender_id: currentUser,
+                        receiver_id: receiver,
+                        user_id: dbConfig.userId,
+                        task_id: taskId,
+                        message_type: messageType,
+                        title: messageTitle,
+                        content: messageContent,
+                        task_title: taskTitle,
+                        is_read: false
+                    };
+
+                    await fetch(`${dbConfig.supabaseUrl}/rest/v1/messages`, {
+                        method: 'POST',
+                        headers: {
+                            'apikey': dbConfig.supabaseAnonKey,
+                            'Authorization': `Bearer ${dbConfig.supabaseAnonKey}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=minimal'
+                        },
+                        body: JSON.stringify(messageData)
+                    });
+                });
+
+                await Promise.all(promises);
+            } catch (error) {
+                console.error('发送任务通知失败:', error);
+            }
+        }
+
+        function getMessageTitle(messageType) {
+            switch (messageType) {
+                case 'task_created': return '➕ 新任务分配';
+                case 'task_updated': return '✏️ 任务已更新';
+                case 'task_deleted': return '🗑️ 任务已删除';
+                default: return '📢 任务通知';
+            }
+        }
+
+        function getMessageContent(messageType, sender, taskTitle) {
+            switch (messageType) {
+                case 'task_created': return `${sender} 创建了新任务：${taskTitle}`;
+                case 'task_updated': return `${sender} 更新了任务：${taskTitle}`;
+                case 'task_deleted': return `${sender} 删除了任务：${taskTitle}`;
+                default: return `${sender} 对任务「${taskTitle}」进行了操作`;
+            }
+        }
+
+        // ==================== 消息中心功能 ====================
+
+        /**
+         * 跳转到消息中心页面
+         */
+        function goToMessageCenter() {
+            window.location.href = 'message_center.html';
+        }
+
+        /**
+         * 加载未读消息数量
+         */
+        async function loadUnreadMessageCount() {
+            try {
+                if (!checkSupabaseConfig()) {
+                    return;
+                }
+
+                // 获取当前用户信息
+                const personalInfoStr = localStorage.getItem('personalInfo');
+                if (!personalInfoStr) {
+                    return;
+                }
+
+                const personalInfo = JSON.parse(personalInfoStr);
+                const currentUser = personalInfo.myAssignee || '';
+
+                if (!currentUser) {
+                    return;
+                }
+
+                // 查询未读消息数量
+                const response = await fetch(
+                    `${DATABASE_CONFIG.supabaseUrl}/rest/v1/messages?` +
+                    `user_id=eq.${DATABASE_CONFIG.userId}&` +
+                    `receiver_id=eq.${currentUser}&` +
+                    `is_read=eq.false&` +
+                    `select=id`,
+                    {
+                        headers: {
+                            'apikey': DATABASE_CONFIG.supabaseAnonKey,
+                            'Authorization': `Bearer ${DATABASE_CONFIG.supabaseAnonKey}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+
+                if (response.ok) {
+                    const messages = await response.json();
+                    const unreadCount = messages.length;
+
+                    // 更新角标显示
+                    updateMessageBadge(unreadCount);
+                }
+            } catch (error) {
+                console.error('加载未读消息数量失败:', error);
+            }
+        }
+
+        /**
+         * 更新消息角标显示
+         */
+        function updateMessageBadge(count) {
+            const badge = document.getElementById('messageBadge');
+            if (badge) {
+                if (count > 0) {
+                    badge.textContent = count > 99 ? '99+' : count;
+                    badge.style.display = 'block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+
+        /**
+         * 定期刷新未读消息数量
+         */
+        function startMessageCountRefresh() {
+            // 立即加载一次
+            loadUnreadMessageCount();
+
+            // 每30秒刷新一次
+            setInterval(loadUnreadMessageCount, 30000);
+        }
+
+        // 页面加载完成后启动消息数量刷新
+        window.addEventListener('load', function() {
+            // 延迟3秒后开始加载消息数量，避免影响页面初始加载
+            setTimeout(startMessageCountRefresh, 3000);
+        });
 
 
     </script>

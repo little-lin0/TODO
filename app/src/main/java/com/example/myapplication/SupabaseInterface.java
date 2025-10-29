@@ -228,6 +228,45 @@ public class SupabaseInterface {
     }
 
     /**
+     * 获取Supabase URL配置
+     */
+    public String getSupabaseUrl() {
+        try {
+            SharedPreferences prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
+            return prefs.getString("supabase_url", "");
+        } catch (Exception e) {
+            Log.e(TAG, "获取Supabase URL失败", e);
+            return "";
+        }
+    }
+
+    /**
+     * 获取Supabase Anon Key配置
+     */
+    public String getSupabaseAnonKey() {
+        try {
+            SharedPreferences prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
+            return prefs.getString("supabase_anon_key", "");
+        } catch (Exception e) {
+            Log.e(TAG, "获取Supabase Anon Key失败", e);
+            return "";
+        }
+    }
+
+    /**
+     * 获取Supabase User ID配置
+     */
+    public String getSupabaseUserId() {
+        try {
+            SharedPreferences prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
+            return prefs.getString("supabase_user_id", "");
+        } catch (Exception e) {
+            Log.e(TAG, "获取Supabase User ID失败", e);
+            return "";
+        }
+    }
+
+    /**
      * 获取晨报晚报时间设置
      */
     @JavascriptInterface
@@ -701,7 +740,7 @@ public class SupabaseInterface {
                             "?user_id=eq." + supabaseUserId +
                             "&or=(assignee.ilike.%25" + java.net.URLEncoder.encode(userId, "UTF-8") + "%25,assignee.eq." + java.net.URLEncoder.encode(userId, "UTF-8") + ")" +
                             "&completed=eq.false" +
-                            "&deadline.gte=" + nowStr +
+                            "&deadline=gte." + nowStr +
                             "&deadline=lte." + next24HoursStr +
                             "&order=deadline.asc";
 
@@ -744,7 +783,7 @@ public class SupabaseInterface {
                             "?user_id=eq." + supabaseUserId +
                             "&or=(assignee.ilike.%25" + java.net.URLEncoder.encode(userId, "UTF-8") + "%25,assignee.eq." + java.net.URLEncoder.encode(userId, "UTF-8") + ")" +
                             "&completed=eq.false" +
-                            "&deadline.lt=" + nowStr +
+                            "&deadline=lt." + nowStr +
                             "&order=deadline.asc";
 
             return executeGetRequest(queryUrl, supabaseAnonKey);
@@ -770,6 +809,7 @@ public class SupabaseInterface {
                 message.senderId = taskObj.optString("user_id", "");
                 message.createdAt = taskObj.optString("created_at");
                 message.messageType = "task";
+                message.assignee = taskObj.optString("assignee", "");  // 提取完成人信息
                 messages.add(message);
             }
         } catch (JSONException e) {
@@ -1912,6 +1952,7 @@ public class SupabaseInterface {
         public String completionNotes;
         public String createdAt;
         public boolean isRead;
+        public String assignee;  // 任务完成人（用于系统消息分配）
 
         @Override
         public String toString() {

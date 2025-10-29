@@ -26,11 +26,17 @@
             padding: 12px 16px;
             display: flex;
             align-items: center;
+            justify-content: space-between;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             position: sticky;
             top: 0;
             z-index: 100;
             border-bottom: 1px solid #e9ecef;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
         }
 
         .back-btn {
@@ -53,6 +59,62 @@
             font-size: 16px;
             font-weight: 600;
             color: #333;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .complete-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .complete-btn:hover {
+            background: #45a049;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+
+        .complete-btn:active {
+            transform: translateY(0);
+        }
+
+        .edit-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .edit-btn:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .edit-btn:active {
+            transform: translateY(0);
         }
 
         .container {
@@ -308,8 +370,18 @@
 </head>
 <body>
     <div class="header">
-        <button class="back-btn" onclick="goBack()">←</button>
-        <div class="header-title">📋 任务详情</div>
+        <div class="header-left">
+            <button class="back-btn" onclick="goBack()">←</button>
+            <div class="header-title">📋 任务详情</div>
+        </div>
+        <div class="header-right">
+            <button class="complete-btn" id="completeBtn" onclick="goToComplete()" style="display: none;">
+                ✓ 去完成
+            </button>
+            <button class="edit-btn" id="editBtn" onclick="goToEdit()">
+                ✏️ 编辑
+            </button>
+        </div>
     </div>
 
     <div class="container">
@@ -566,6 +638,16 @@
             }
 
             timeInfoText.innerHTML = timeInfoHtml || '无时间信息';
+
+            // 根据任务完成状态显示/隐藏"去完成"按钮
+            const completeBtn = document.getElementById('completeBtn');
+            if (task.completed) {
+                // 已完成的任务隐藏"去完成"按钮
+                completeBtn.style.display = 'none';
+            } else {
+                // 未完成的任务显示"去完成"按钮
+                completeBtn.style.display = 'flex';
+            }
         }
 
         function viewImage(imageSrc) {
@@ -578,6 +660,25 @@
         function closeImageModal() {
             const modal = document.getElementById('imageModal');
             modal.classList.remove('active');
+        }
+
+        function goToEdit() {
+            if (!taskData || !taskData.id) {
+                alert('无法获取任务信息');
+                return;
+            }
+            // 跳转到编辑页面，传递任务ID
+            window.location.href = 'task_edit.html?id=' + taskData.id;
+        }
+
+        function goToComplete() {
+            if (!taskData || !taskData.id) {
+                alert('无法获取任务信息');
+                return;
+            }
+            // 跳转到完成页面，传递任务ID和任务数据
+            localStorage.setItem('completeTask_' + taskData.id, JSON.stringify(taskData));
+            window.location.href = 'task_complete.html?id=' + taskData.id;
         }
 
         function goBack() {

@@ -1148,6 +1148,15 @@
                 if (response.ok) {
                     console.log('任务更新成功');
 
+                    // 发送消息通知给除了自己之外的完成人
+                    await sendTaskNotificationToAssignees(
+                        DATABASE_CONFIG,
+                        taskData.id,
+                        title,
+                        'task_updated',
+                        selectedAssignees
+                    );
+
                     // 保存到localStorage供主页面使用（可选）
                     const taskObj = {
                         id: taskData.id,
@@ -1217,6 +1226,76 @@
             } catch (error) {
                 console.error('查询任务数据失败:', error);
                 throw error;
+            }
+        }
+
+        /**
+         * 发送任务通知消息给完成人（排除自己）
+         */
+        async function sendTaskNotificationToAssignees(dbConfig, taskId, taskTitle, messageType, assignees) {
+            try {
+                const personalInfoStr = localStorage.getItem('personalInfo');
+                if (!personalInfoStr || !assignees || assignees.length === 0) {
+                    return;
+                }
+
+                const personalInfo = JSON.parse(personalInfoStr);
+                const currentUser = personalInfo.myAssignee || '我';
+                const otherAssignees = assignees.filter(assignee => assignee !== currentUser);
+
+                if (otherAssignees.length === 0) {
+                    return;
+                }
+
+                const messageTitle = getMessageTitle(messageType);
+                const messageContent = getMessageContent(messageType, currentUser, taskTitle);
+
+                const promises = otherAssignees.map(async (receiver) => {
+                    const messageData = {
+                        sender_id: currentUser,
+                        receiver_id: receiver,
+                        user_id: dbConfig.userId,
+                        task_id: taskId,
+                        message_type: messageType,
+                        title: messageTitle,
+                        content: messageContent,
+                        task_title: taskTitle,
+                        is_read: false
+                    };
+
+                    await fetch(`${dbConfig.supabaseUrl}/rest/v1/messages`, {
+                        method: 'POST',
+                        headers: {
+                            'apikey': dbConfig.supabaseAnonKey,
+                            'Authorization': `Bearer ${dbConfig.supabaseAnonKey}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=minimal'
+                        },
+                        body: JSON.stringify(messageData)
+                    });
+                });
+
+                await Promise.all(promises);
+            } catch (error) {
+                console.error('发送任务通知失败:', error);
+            }
+        }
+
+        function getMessageTitle(messageType) {
+            switch (messageType) {
+                case 'task_created': return '➕ 新任务分配';
+                case 'task_updated': return '✏️ 任务已更新';
+                case 'task_deleted': return '🗑️ 任务已删除';
+                default: return '📢 任务通知';
+            }
+        }
+
+        function getMessageContent(messageType, sender, taskTitle) {
+            switch (messageType) {
+                case 'task_created': return `${sender} 创建了新任务：${taskTitle}`;
+                case 'task_updated': return `${sender} 更新了任务：${taskTitle}`;
+                case 'task_deleted': return `${sender} 删除了任务：${taskTitle}`;
+                default: return `${sender} 对任务「${taskTitle}」进行了操作`;
             }
         }
 

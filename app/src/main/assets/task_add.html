@@ -926,6 +926,15 @@
                 if (response.ok) {
                     console.log('任务创建成功');
 
+                    // 发送消息通知给除了自己之外的完成人
+                    await sendTaskNotificationToAssignees(
+                        DATABASE_CONFIG,
+                        taskId,
+                        title,
+                        'task_created',
+                        selectedAssignees
+                    );
+
                     // 保存到localStorage供主页面使用（可选）
                     const taskObj = {
                         title: title,
@@ -947,6 +956,109 @@
             } catch (error) {
                 console.error('创建任务失败:', error);
                 alert('创建任务失败: ' + error.message + '\n\n请检查网络连接后重试');
+            }
+        }
+
+        /**
+         * 发送任务通知消息给完成人（排除自己）
+         * @param {Object} dbConfig - 数据库配置
+         * @param {String} taskId - 任务ID
+         * @param {String} taskTitle - 任务标题
+         * @param {String} messageType - 消息类型 (task_created, task_updated, task_deleted)
+         * @param {Array} assignees - 完成人列表
+         */
+        async function sendTaskNotificationToAssignees(dbConfig, taskId, taskTitle, messageType, assignees) {
+            try {
+                // 获取当前用户信息
+                const personalInfoStr = localStorage.getItem('personalInfo');
+                if (!personalInfoStr || !assignees || assignees.length === 0) {
+                    return;
+                }
+
+                const personalInfo = JSON.parse(personalInfoStr);
+                const currentUser = personalInfo.myAssignee || '我';
+
+                // 过滤掉自己，只发送给其他完成人
+                const otherAssignees = assignees.filter(assignee => assignee !== currentUser);
+
+                if (otherAssignees.length === 0) {
+                    console.log('没有其他完成人需要通知');
+                    return;
+                }
+
+                // 构建消息内容
+                const messageTitle = getMessageTitle(messageType);
+                const messageContent = getMessageContent(messageType, currentUser, taskTitle);
+
+                // 为每个完成人发送消息
+                const promises = otherAssignees.map(async (receiver) => {
+                    const messageData = {
+                        sender_id: currentUser,
+                        receiver_id: receiver,
+                        user_id: dbConfig.userId,
+                        task_id: taskId,
+                        message_type: messageType,
+                        title: messageTitle,
+                        content: messageContent,
+                        task_title: taskTitle,
+                        is_read: false
+                    };
+
+                    const response = await fetch(`${dbConfig.supabaseUrl}/rest/v1/messages`, {
+                        method: 'POST',
+                        headers: {
+                            'apikey': dbConfig.supabaseAnonKey,
+                            'Authorization': `Bearer ${dbConfig.supabaseAnonKey}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=minimal'
+                        },
+                        body: JSON.stringify(messageData)
+                    });
+
+                    if (response.ok) {
+                        console.log(`消息已发送给: ${receiver}`);
+                    } else {
+                        console.error(`发送消息给${receiver}失败:`, response.status);
+                    }
+                });
+
+                await Promise.all(promises);
+                console.log(`任务通知已发送给${otherAssignees.length}个完成人`);
+
+            } catch (error) {
+                console.error('发送任务通知失败:', error);
+            }
+        }
+
+        /**
+         * 获取消息标题
+         */
+        function getMessageTitle(messageType) {
+            switch (messageType) {
+                case 'task_created':
+                    return '➕ 新任务分配';
+                case 'task_updated':
+                    return '✏️ 任务已更新';
+                case 'task_deleted':
+                    return '🗑️ 任务已删除';
+                default:
+                    return '📢 任务通知';
+            }
+        }
+
+        /**
+         * 获取消息内容
+         */
+        function getMessageContent(messageType, sender, taskTitle) {
+            switch (messageType) {
+                case 'task_created':
+                    return `${sender} 创建了新任务：${taskTitle}`;
+                case 'task_updated':
+                    return `${sender} 更新了任务：${taskTitle}`;
+                case 'task_deleted':
+                    return `${sender} 删除了任务：${taskTitle}`;
+                default:
+                    return `${sender} 对任务「${taskTitle}」进行了操作`;
             }
         }
 
