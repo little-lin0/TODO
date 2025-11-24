@@ -1766,7 +1766,6 @@
         }
 
         /* 设置模态框特殊样式 - 增加更多内边距和更大宽度 */
-        #dailyTodoModal .modal-content,
         #wechatModal .modal-content,
         #assigneeModal .modal-content {
             max-width: 520px;
@@ -1818,7 +1817,6 @@
         }
 
         /* 设置模态框的头部样式调整 */
-        #dailyTodoModal .modal-header,
         #wechatModal .modal-header,
         #assigneeModal .modal-header {
             padding: 0 0 16px 0;
@@ -1827,14 +1825,12 @@
         }
 
         /* 设置模态框的表单组间距调整 - 紧凑布局 */
-        #dailyTodoModal .form-group,
         #wechatModal .form-group,
         #assigneeModal .form-group {
             margin-bottom: 16px;
         }
 
         /* 设置模态框的操作按钮区域 - 紧凑布局 */
-        #dailyTodoModal .form-actions,
         #wechatModal .form-actions,
         #assigneeModal .form-actions {
             padding-top: 16px;
@@ -7187,7 +7183,7 @@
                     <!-- 设置选项 -->
                     <div style="display: grid; grid-template-columns: 1fr; gap: 12px; padding: 16px 0; max-width: 400px; margin: 0 auto;">
                         <!-- 每日待办设置 -->
-                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px; border-radius: 10px; cursor: pointer; transition: transform 0.2s ease;" onclick="showDailyTodoSettings()">
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px; border-radius: 10px; cursor: pointer; transition: transform 0.2s ease;" onclick="window.location.href='daily_todo_settings.html'">
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <div style="font-size: 24px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.2); border-radius: 10px;">📋</div>
                                 <div>
@@ -7252,54 +7248,6 @@
                                 <div id="messageBadge" style="display: none; background: #ff4444; color: white; font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 12px; min-width: 24px; text-align: center;">0</div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 每日待办设置模态框 -->
-            <div class="modal" id="dailyTodoModal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <div class="modal-title">每日待办设置</div>
-                        <button class="close-btn" id="closeDailyTodoBtn">&times;</button>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">每日固定任务模板</label>
-                        <textarea class="form-textarea" id="dailyTasksTemplate" placeholder="每行一个任务，格式：任务名称|优先级|分类|截止时间|完成人&#10;例如：&#10;查看邮件|medium|work|09:30|张三&#10;锻炼30分钟|high|life|18:00|李四&#10;学习新知识|low|study|21:30|王五&#10;制定明日计划|medium|work|22:00|张三&#10;&#10;说明：&#10;- 优先级：high(高)|medium(中)|low(低)&#10;- 分类：work(工作)|life(生活)|study(学习)|other(其他)&#10;- 截止时间：HH:MM格式，不填则默认23:59&#10;- 完成人：从完成人列表中选择，不填则为未分配&#10;- 每日会自动生成未来7天的任务" rows="10"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">自动添加时间</label>
-                        <input type="time" class="form-input" id="autoAddTime" value="09:00">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-checkbox-group">
-                            <input type="checkbox" id="enableDailyTodo" checked>
-                            <span>启用每日自动添加任务</span>
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-checkbox-group">
-                            <input type="checkbox" id="skipHolidays" checked>
-                            <span>跳过节假日（周末和法定节假日）</span>
-                        </label>
-                        <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
-                            开启后将不会在周末和法定节假日生成每日任务
-                        </small>
-                    </div>
-                    <div class="form-actions">
-                        <button class="btn-cancel" id="cancelDailyTodoBtn">取消</button>
-                        <button class="btn-save" id="saveDailyTodoBtn">保存</button>
-                    </div>
-                    <!-- 调试工具 -->
-                    <div class="form-group" style="border-top: 1px solid #e0e0e0; padding-top: 15px; margin-top: 15px;">
-                        <label class="form-label">🔧 调试工具</label>
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button class="btn" style="background: #0066cc; color: white; flex: 1;" onclick="showDailyTodoDebugInfo()">查看诊断信息</button>
-                            <button class="btn" style="background: #28a745; color: white; flex: 1;" onclick="testTaskCreation()">测试创建任务</button>
-                        </div>
-                        <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
-                            如果任务未生成，点击"查看诊断信息"查看详细状态
-                        </small>
                     </div>
                 </div>
             </div>
@@ -8842,9 +8790,6 @@
                 console.error('未找到editModal元素，无法绑定点击外部关闭事件');
             }
             
-            // 绑定每日待办设置按钮事件
-            bindDailyTodoEvents();
-
             // 绑定微信设置按钮事件
             bindWechatEvents();
 
@@ -11441,15 +11386,7 @@
         }
 
         // 每日待办相关功能
-        function showDailyTodoSettings() {
-            const modal = document.getElementById('dailyTodoModal');
-            if (modal) {
-                // 加载当前设置
-                loadDailyTodoSettings();
-                lockScroll(); // 锁定页面滚动
-                modal.style.display = 'flex';
-            }
-        }
+        // 每日待办设置已改为独立页面，相关函数已删除
 
         // 微信通知设置功能
         function showWechatSettings() {
@@ -11486,35 +11423,6 @@
             if (modal) {
                 unlockScroll(); // 解锁页面滚动
                 modal.style.display = 'none';
-            }
-        }
-
-        function closeDailyTodoModal() {
-            const modal = document.getElementById('dailyTodoModal');
-            if (modal) {
-                unlockScroll(); // 解锁页面滚动
-                modal.style.display = 'none';
-            }
-        }
-
-        function loadDailyTodoSettings() {
-            const settings = getDailyTodoSettings();
-            const templateTextarea = document.getElementById('dailyTasksTemplate');
-            const autoAddTimeInput = document.getElementById('autoAddTime');
-            const enableCheckbox = document.getElementById('enableDailyTodo');
-            const skipHolidaysCheckbox = document.getElementById('skipHolidays');
-
-            if (templateTextarea && settings.template) {
-                templateTextarea.value = settings.template;
-            }
-            if (autoAddTimeInput && settings.autoAddTime) {
-                autoAddTimeInput.value = settings.autoAddTime;
-            }
-            if (enableCheckbox) {
-                enableCheckbox.checked = settings.enabled;
-            }
-            if (skipHolidaysCheckbox) {
-                skipHolidaysCheckbox.checked = settings.skipHolidays !== false; // 默认为true
             }
         }
 
@@ -11639,84 +11547,6 @@
                     binIdInfo.textContent = '暂无Bin ID';
                 }
             }
-        }
-
-        async function saveDailyTodoSettings() {
-            const templateTextarea = document.getElementById('dailyTasksTemplate');
-            const autoAddTimeInput = document.getElementById('autoAddTime');
-            const enableCheckbox = document.getElementById('enableDailyTodo');
-            const skipHolidaysCheckbox = document.getElementById('skipHolidays');
-
-            const oldSettings = getDailyTodoSettings();
-
-            // 先检查是否有变化
-            const newTemplate = templateTextarea ? templateTextarea.value.trim() : '';
-            const newEnabled = enableCheckbox ? enableCheckbox.checked : true;
-            const newSkipHolidays = skipHolidaysCheckbox ? skipHolidaysCheckbox.checked : true;
-
-            const templateChanged = oldSettings.template !== newTemplate;
-            const enabledChanged = oldSettings.enabled !== newEnabled;
-
-            const newSettings = {
-                ...oldSettings, // 保留其他设置
-                template: newTemplate,
-                autoAddTime: autoAddTimeInput ? autoAddTimeInput.value : '09:00',
-                enabled: newEnabled,
-                skipHolidays: newSkipHolidays,
-                // 只有在模板或开关有变化时才重置日期，否则保持原有日期避免重复生成
-                lastAddedDate: (templateChanged || enabledChanged) ? null : oldSettings.lastAddedDate,
-            };
-
-            const skipHolidaysChanged = oldSettings.skipHolidays !== newSkipHolidays;
-
-            // 注意：任务生成已移至后台服务，前端只负责保存配置和触发生成
-
-            localStorage.setItem('dailyTodoSettings', JSON.stringify(newSettings));
-
-            // 同步每日待办配置到Android端
-            try {
-                if (window.AndroidDatabase && typeof window.AndroidDatabase.saveDailyTodoSettings === 'function') {
-                    const success = window.AndroidDatabase.saveDailyTodoSettings(
-                        newSettings.template,
-                        newSettings.enabled,
-                        newSettings.skipHolidays
-                    );
-                    console.log('Android每日待办配置同步结果:', success);
-                    if (success) {
-                        console.log('每日待办配置已同步到后台服务');
-                    }
-                }
-            } catch (error) {
-                console.error('同步每日待办配置到Android失败:', error);
-            }
-
-            // 触发后台直接生成今日任务（不使用广播）
-            try {
-                if (window.AndroidDatabase && typeof window.AndroidDatabase.triggerDailyTodoGeneration === 'function') {
-                    window.AndroidDatabase.triggerDailyTodoGeneration();
-                    console.log('已触发后台直接生成每日待办任务');
-
-                    // 等待2秒后刷新任务列表（给任务创建足够时间）
-                    setTimeout(async () => {
-                        console.log('刷新任务列表以显示新生成的任务');
-                        await loadTasksFromAPI();
-                        renderTasks();
-                        updateStats();
-                    }, 2000);
-                }
-            } catch (error) {
-                console.error('触发后台生成任务失败:', error);
-            }
-
-            closeDailyTodoModal();
-
-            // 构建提示信息
-            let message = '每日待办设置已保存';
-            if (newSettings.enabled && newSettings.template) {
-                message += '，任务生成中，请稍后查看（自动刷新）';
-            }
-
-            alert(message);
         }
 
         // 调试函数：显示每日待办诊断信息
@@ -12953,25 +12783,7 @@
             }
         }
 
-        function bindDailyTodoEvents() {
-            console.log('重新绑定每日待办设置按钮事件');
-
-            // 绑定每日待办设置按钮
-            bindButton('closeDailyTodoBtn', closeDailyTodoModal, '每日待办关闭按钮');
-            bindButton('cancelDailyTodoBtn', closeDailyTodoModal, '每日待办取消按钮');
-            bindButton('saveDailyTodoBtn', saveDailyTodoSettings, '每日待办保存按钮');
-
-            // 模态框背景点击
-            const dailyTodoModal = document.getElementById('dailyTodoModal');
-            if (dailyTodoModal) {
-                dailyTodoModal.addEventListener('click', function(e) {
-                    if (e.target === this) {
-                        console.log('每日待办模态框背景点击');
-                        closeDailyTodoModal();
-                    }
-                });
-            }
-        }
+        // bindDailyTodoEvents 已删除，每日待办设置改为独立页面
 
         function bindWechatEvents() {
             console.log('重新绑定微信设置按钮事件');
@@ -13392,7 +13204,6 @@
             try {
                 // 重新绑定所有模态框按钮
                 bindCompleteTaskEvents();
-                bindDailyTodoEvents();
                 bindWechatEvents();
                 bindDatabaseEvents();
                 bindAssigneeEvents();

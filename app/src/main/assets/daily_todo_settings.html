@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>每日待办设置</title>
+    <!-- Quill富文本编辑器 -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f8f9fa;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px 12px;
+            margin-right: 12px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .container {
+            padding: 16px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .info-banner {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .info-banner h3 {
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .info-banner p {
+            font-size: 13px;
+            opacity: 0.95;
+            line-height: 1.6;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+            margin: 20px 0 12px;
+            padding-left: 12px;
+            border-left: 3px solid #667eea;
+        }
+
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .task-item {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+            position: relative;
+        }
+
+        .task-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .task-item-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+        }
+
+        .task-item-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .task-item-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .task-item-btn:hover {
+            background: rgba(0,0,0,0.05);
+        }
+
+        .task-item-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .task-item-detail {
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .add-task-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .add-task-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .form-group {
+            background: white;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-label.required::after {
+            content: " *";
+            color: #f44336;
+        }
+
+        .form-input,
+        .form-textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .form-checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        /* 自定义选择框样式 */
+        .custom-single-select {
+            position: relative;
+            width: 100%;
+        }
+
+        .custom-select-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            min-height: 48px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .custom-select-trigger:hover {
+            border-color: #b0b0b0;
+        }
+
+        .custom-select-trigger.active {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .custom-select-display {
+            flex: 1;
+        }
+
+        .custom-select-arrow {
+            margin-left: 8px;
+            transition: transform 0.3s ease;
+            font-size: 12px;
+        }
+
+        .custom-select-trigger.active .custom-select-arrow {
+            transform: rotate(180deg);
+        }
+
+        .custom-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #667eea;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            margin-top: -1px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .custom-select-dropdown.active {
+            display: block;
+        }
+
+        .custom-select-option {
+            padding: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s ease;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .custom-select-option:last-child {
+            border-bottom: none;
+        }
+
+        .custom-select-option:hover {
+            background-color: #fff3e0;
+        }
+
+        .custom-select-option.selected {
+            background-color: #667eea;
+            color: white;
+            font-weight: 500;
+        }
+
+        .custom-select-option.selected:hover {
+            background-color: #5568d3;
+        }
+
+        /* 多选完成人样式 */
+        .multi-select-container {
+            position: relative;
+        }
+
+        .multi-select-display {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            min-height: 48px;
+            transition: all 0.3s ease;
+        }
+
+        .multi-select-display:hover {
+            border-color: #b0b0b0;
+        }
+
+        .multi-select-display.active {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .multi-select-tags {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .assignee-tag {
+            display: inline-flex;
+            align-items: center;
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 13px;
+            gap: 6px;
+        }
+
+        .assignee-tag .remove {
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .placeholder {
+            color: #999;
+        }
+
+        .dropdown-arrow {
+            margin-left: 8px;
+            transition: transform 0.3s ease;
+            font-size: 12px;
+        }
+
+        .multi-select-display.active .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .multi-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #667eea;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            margin-top: -1px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .multi-select-dropdown.active {
+            display: block;
+        }
+
+        .assignee-search {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 1;
+        }
+
+        .assignee-search input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .assignee-option {
+            padding: 10px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background-color 0.2s ease;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        .assignee-option:last-child {
+            border-bottom: none;
+        }
+
+        .assignee-option:hover {
+            background-color: #fff3e0;
+        }
+
+        .assignee-option input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .assignee-option label {
+            flex: 1;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 16px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        /* Quill富文本编辑器样式 */
+        .quill-editor-container {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .quill-editor-container .ql-toolbar {
+            border: none;
+            border-bottom: 1px solid #e0e0e0;
+            background: #fafafa;
+        }
+
+        .quill-editor-container .ql-container {
+            border: none;
+            font-size: 14px;
+            min-height: 80px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .quill-editor-container .ql-editor {
+            min-height: 80px;
+            padding: 12px;
+            line-height: 1.6;
+        }
+
+        .quill-editor-container .ql-editor.ql-blank::before {
+            color: #999;
+            font-style: normal;
+        }
+
+        .quill-editor-container:focus-within {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .footer-actions {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 12px 16px;
+            display: flex;
+            gap: 12px;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+            max-width: 800px;
+            margin: 0 auto;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .btn-cancel,
+        .btn-save {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-cancel {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        .btn-cancel:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-save {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-save:hover {
+            background: #5568d3;
+        }
+
+        .form-help {
+            font-size: 11px;
+            color: #999;
+            margin-top: 6px;
+            display: block;
+        }
+
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .close-modal-btn {
+            background: transparent;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #999;
+            transition: all 0.2s ease;
+        }
+
+        .close-modal-btn:hover {
+            color: #333;
+        }
+
+        .modal-body {
+            padding: 16px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            padding: 16px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="back-btn" onclick="goBack()">←</button>
+        <div class="header-title">📋 每日待办设置</div>
+    </div>
+
+    <div class="container">
+        <div class="info-banner">
+            <h3>💡 功能说明</h3>
+            <p>设置每日固定任务模板，系统将在指定时间自动生成任务。你可以配置任务的标题、备注、优先级、分类、截止时间和完成人等信息。</p>
+        </div>
+
+        <section class="section-title">基本设置</section>
+
+        <div class="form-group">
+            <label class="form-checkbox-group">
+                <input type="checkbox" id="enableDailyTodo" checked>
+                <span>启用每日自动添加任务</span>
+            </label>
+        </div>
+
+        <div class="form-group">
+            <label class="form-checkbox-group">
+                <input type="checkbox" id="skipHolidays" checked>
+                <span>跳过节假日（周末和法定节假日）</span>
+            </label>
+            <small class="form-help">开启后将不会在周末和法定节假日生成每日任务</small>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">自动生成时间</label>
+            <input type="time" class="form-input" id="autoAddTime" value="09:00">
+            <small class="form-help">系统将在此时间自动生成每日任务</small>
+        </div>
+
+        <section class="section-title">任务模板列表</section>
+
+        <div class="task-list" id="taskList">
+            <!-- 任务项将通过JavaScript动态生成 -->
+        </div>
+
+        <button class="add-task-btn" onclick="openAddTaskModal()">
+            ➕ 添加任务模板
+        </button>
+    </div>
+
+    <div class="footer-actions">
+        <button class="btn-cancel" onclick="goBack()">取消</button>
+        <button class="btn-save" onclick="saveSettings()">💾 保存设置</button>
+    </div>
+
+    <!-- 任务编辑模态框 -->
+    <div class="modal" id="taskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">添加任务模板</div>
+                <button class="close-modal-btn" onclick="closeTaskModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label required">任务标题</label>
+                    <input type="text" class="form-input" id="taskTitle" placeholder="请输入任务标题..." maxlength="100">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">任务备注</label>
+                    <div class="quill-editor-container">
+                        <div id="taskNotesEditor"></div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">优先级</label>
+                        <div class="custom-single-select" id="priorityContainer">
+                            <div class="custom-select-trigger" onclick="toggleDropdown('priority')">
+                                <div class="custom-select-display" id="priorityDisplay">中优先级</div>
+                                <div class="custom-select-arrow">▼</div>
+                            </div>
+                            <div class="custom-select-dropdown" id="priorityDropdown">
+                                <div class="custom-select-option" data-value="high" onclick="selectOption('priority', 'high', '高优先级')">高优先级</div>
+                                <div class="custom-select-option selected" data-value="medium" onclick="selectOption('priority', 'medium', '中优先级')">中优先级</div>
+                                <div class="custom-select-option" data-value="low" onclick="selectOption('priority', 'low', '低优先级')">低优先级</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">分类</label>
+                        <div class="custom-single-select" id="categoryContainer">
+                            <div class="custom-select-trigger" onclick="toggleDropdown('category')">
+                                <div class="custom-select-display" id="categoryDisplay">工作</div>
+                                <div class="custom-select-arrow">▼</div>
+                            </div>
+                            <div class="custom-select-dropdown" id="categoryDropdown">
+                                <div class="custom-select-option selected" data-value="work" onclick="selectOption('category', 'work', '工作')">工作</div>
+                                <div class="custom-select-option" data-value="life" onclick="selectOption('category', 'life', '生活')">生活</div>
+                                <div class="custom-select-option" data-value="study" onclick="selectOption('category', 'study', '学习')">学习</div>
+                                <div class="custom-select-option" data-value="other" onclick="selectOption('category', 'other', '其他')">其他</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">截止时间</label>
+                    <input type="time" class="form-input" id="deadline" value="23:59">
+                    <small class="form-help">设置任务的截止时间（默认23:59）</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">完成人</label>
+                    <div class="multi-select-container">
+                        <div class="multi-select-display" onclick="toggleAssigneeDropdown()">
+                            <div class="multi-select-tags" id="assigneeTags">
+                                <span class="placeholder">选择完成人（可选）</span>
+                            </div>
+                            <span class="dropdown-arrow">▼</span>
+                        </div>
+                        <div class="multi-select-dropdown" id="assigneeDropdown">
+                            <div class="assignee-search">
+                                <input type="text" placeholder="搜索完成人..." onkeyup="filterAssignees(this.value)">
+                            </div>
+                            <div id="assigneeOptions">
+                                <!-- 选项将通过JavaScript动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+                    <small class="form-help">可以选择多个完成人</small>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeTaskModal()">取消</button>
+                <button class="btn-save" onclick="saveTask()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let taskTemplates = [];
+        let assignees = [];
+        let selectedAssignees = [];
+        let selectedValues = {
+            priority: 'medium',
+            category: 'work'
+        };
+        let taskNotesQuill = null;
+        let editingTaskIndex = -1;
+
+        window.onload = function() {
+            // 初始化Quill富文本编辑器
+            taskNotesQuill = new Quill('#taskNotesEditor', {
+                theme: 'snow',
+                placeholder: '请输入任务备注（可选）...',
+                modules: {
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['link'],
+                        ['clean']
+                    ]
+                }
+            });
+
+            // 加载配置
+            loadSettings();
+            loadAssignees();
+
+            // 点击页面其他地方关闭下拉框
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.custom-single-select') && !e.target.closest('.multi-select-container')) {
+                    closeAllDropdowns();
+                }
+            });
+        };
+
+        function loadSettings() {
+            try {
+                const settings = localStorage.getItem('dailyTodoSettings');
+                if (settings) {
+                    const parsed = JSON.parse(settings);
+
+                    // 加载基本设置
+                    document.getElementById('enableDailyTodo').checked = parsed.enabled !== false;
+                    document.getElementById('skipHolidays').checked = parsed.skipHolidays !== false;
+                    document.getElementById('autoAddTime').value = parsed.autoAddTime || '09:00';
+
+                    // 加载任务模板（JSON格式）
+                    if (parsed.templates && Array.isArray(parsed.templates)) {
+                        taskTemplates = parsed.templates;
+                    } else {
+                        // 兼容旧的字符串模板格式
+                        taskTemplates = [];
+                    }
+                }
+                renderTaskList();
+            } catch (error) {
+                console.error('加载设置失败:', error);
+            }
+        }
+
+        function loadAssignees() {
+            const saved = localStorage.getItem('assignees');
+            if (saved) {
+                try {
+                    assignees = JSON.parse(saved);
+                    assignees = assignees.map(assignee => {
+                        if (typeof assignee === 'string') {
+                            return { name: assignee };
+                        }
+                        return assignee;
+                    });
+                } catch (error) {
+                    console.error('加载完成人列表失败:', error);
+                    assignees = [];
+                }
+            }
+            renderAssigneeOptions();
+        }
+
+        function renderTaskList() {
+            const container = document.getElementById('taskList');
+            container.innerHTML = '';
+
+            if (taskTemplates.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px; color: #999;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">📋</div>
+                        <div style="font-size: 14px;">暂无任务模板</div>
+                        <div style="font-size: 12px; margin-top: 8px;">点击下方按钮添加任务模板</div>
+                    </div>
+                `;
+                return;
+            }
+
+            taskTemplates.forEach((task, index) => {
+                const priorityMap = {
+                    'high': '🔴 高',
+                    'medium': '🟡 中',
+                    'low': '🟢 低'
+                };
+                const categoryMap = {
+                    'work': '💼 工作',
+                    'life': '🏠 生活',
+                    'study': '📚 学习',
+                    'other': '📌 其他'
+                };
+
+                const div = document.createElement('div');
+                div.className = 'task-item';
+                div.innerHTML = `
+                    <div class="task-item-header">
+                        <div class="task-item-title">${task.title}</div>
+                        <div class="task-item-actions">
+                            <button class="task-item-btn" onclick="editTask(${index})" title="编辑">✏️</button>
+                            <button class="task-item-btn" onclick="deleteTask(${index})" title="删除">🗑️</button>
+                        </div>
+                    </div>
+                    ${task.notes ? `<div style="font-size: 13px; color: #666; margin-top: 8px; line-height: 1.5;">${task.notes.replace(/<[^>]*>/g, ' ').substring(0, 100)}${task.notes.length > 100 ? '...' : ''}</div>` : ''}
+                    <div class="task-item-details">
+                        <div class="task-item-detail">${priorityMap[task.priority] || '🟡 中'}</div>
+                        <div class="task-item-detail">${categoryMap[task.category] || '💼 工作'}</div>
+                        <div class="task-item-detail">⏰ ${task.deadline || '23:59'}</div>
+                        ${task.assignees && task.assignees.length > 0 ? `<div class="task-item-detail">👥 ${task.assignees.join(', ')}</div>` : '<div class="task-item-detail">👤 未分配</div>'}
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function openAddTaskModal() {
+            editingTaskIndex = -1;
+            document.getElementById('modalTitle').textContent = '添加任务模板';
+            clearTaskForm();
+            document.getElementById('taskModal').classList.add('active');
+        }
+
+        function editTask(index) {
+            editingTaskIndex = index;
+            const task = taskTemplates[index];
+
+            document.getElementById('modalTitle').textContent = '编辑任务模板';
+            document.getElementById('taskTitle').value = task.title;
+
+            // 设置备注
+            if (task.notes) {
+                taskNotesQuill.root.innerHTML = task.notes;
+            } else {
+                taskNotesQuill.setText('');
+            }
+
+            // 设置优先级
+            selectedValues.priority = task.priority || 'medium';
+            const priorityLabels = { 'high': '高优先级', 'medium': '中优先级', 'low': '低优先级' };
+            document.getElementById('priorityDisplay').textContent = priorityLabels[selectedValues.priority];
+            updateDropdownSelection('priority', selectedValues.priority);
+
+            // 设置分类
+            selectedValues.category = task.category || 'work';
+            const categoryLabels = { 'work': '工作', 'life': '生活', 'study': '学习', 'other': '其他' };
+            document.getElementById('categoryDisplay').textContent = categoryLabels[selectedValues.category];
+            updateDropdownSelection('category', selectedValues.category);
+
+            // 设置截止时间
+            document.getElementById('deadline').value = task.deadline || '23:59';
+
+            // 设置完成人
+            selectedAssignees = task.assignees || [];
+            updateAssigneeDisplay();
+            renderAssigneeOptions();
+
+            document.getElementById('taskModal').classList.add('active');
+        }
+
+        function deleteTask(index) {
+            if (confirm('确定要删除这个任务模板吗？')) {
+                taskTemplates.splice(index, 1);
+                renderTaskList();
+            }
+        }
+
+        function closeTaskModal() {
+            document.getElementById('taskModal').classList.remove('active');
+            clearTaskForm();
+        }
+
+        function clearTaskForm() {
+            document.getElementById('taskTitle').value = '';
+            taskNotesQuill.setText('');
+            selectedValues = { priority: 'medium', category: 'work' };
+            selectedAssignees = [];
+            document.getElementById('priorityDisplay').textContent = '中优先级';
+            document.getElementById('categoryDisplay').textContent = '工作';
+            document.getElementById('deadline').value = '23:59';
+            updateDropdownSelection('priority', 'medium');
+            updateDropdownSelection('category', 'work');
+            updateAssigneeDisplay();
+            renderAssigneeOptions();
+        }
+
+        function saveTask() {
+            const title = document.getElementById('taskTitle').value.trim();
+            if (!title) {
+                alert('请输入任务标题');
+                return;
+            }
+
+            const notesHtml = taskNotesQuill.root.innerHTML;
+            const notes = taskNotesQuill.getText().trim() ? notesHtml : '';
+
+            const task = {
+                title: title,
+                notes: notes || null,
+                priority: selectedValues.priority || 'medium',
+                category: selectedValues.category || 'work',
+                deadline: document.getElementById('deadline').value || '23:59',
+                assignees: selectedAssignees.length > 0 ? selectedAssignees : null
+            };
+
+            if (editingTaskIndex >= 0) {
+                taskTemplates[editingTaskIndex] = task;
+            } else {
+                taskTemplates.push(task);
+            }
+
+            renderTaskList();
+            closeTaskModal();
+        }
+
+        function saveSettings() {
+            const settings = {
+                enabled: document.getElementById('enableDailyTodo').checked,
+                skipHolidays: document.getElementById('skipHolidays').checked,
+                autoAddTime: document.getElementById('autoAddTime').value,
+                templates: taskTemplates,
+                lastAddedDate: null // 重置生成日期，确保保存后会重新生成
+            };
+
+            try {
+                localStorage.setItem('dailyTodoSettings', JSON.stringify(settings));
+
+                // 同步到Android端
+                if (window.AndroidDatabase && typeof window.AndroidDatabase.saveDailyTodoSettings === 'function') {
+                    const success = window.AndroidDatabase.saveDailyTodoSettings(
+                        JSON.stringify(taskTemplates), // 传递JSON字符串
+                        settings.enabled,
+                        settings.skipHolidays
+                    );
+                    console.log('Android每日待办配置同步结果:', success);
+                }
+
+                alert('设置保存成功！');
+                goBack();
+            } catch (error) {
+                console.error('保存设置失败:', error);
+                alert('保存设置失败: ' + error.message);
+            }
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+        // 下拉框相关函数
+        function toggleDropdown(type) {
+            event.stopPropagation();
+            const trigger = document.querySelector(`#${type}Container .custom-select-trigger`);
+            const dropdown = document.getElementById(type + 'Dropdown');
+            closeAllDropdowns(type);
+            const isActive = dropdown.classList.contains('active');
+            if (isActive) {
+                trigger.classList.remove('active');
+                dropdown.classList.remove('active');
+            } else {
+                trigger.classList.add('active');
+                dropdown.classList.add('active');
+            }
+        }
+
+        function closeAllDropdowns(except) {
+            const dropdowns = document.querySelectorAll('.custom-select-dropdown');
+            const triggers = document.querySelectorAll('.custom-select-trigger');
+            dropdowns.forEach((dropdown, index) => {
+                if (!except || dropdown.id !== except + 'Dropdown') {
+                    dropdown.classList.remove('active');
+                    if (triggers[index]) {
+                        triggers[index].classList.remove('active');
+                    }
+                }
+            });
+            if (except !== 'assignee') {
+                const assigneeDisplay = document.querySelector('.multi-select-display');
+                const assigneeDropdown = document.getElementById('assigneeDropdown');
+                if (assigneeDisplay) assigneeDisplay.classList.remove('active');
+                if (assigneeDropdown) assigneeDropdown.classList.remove('active');
+            }
+        }
+
+        function selectOption(type, value, label) {
+            event.stopPropagation();
+            selectedValues[type] = value;
+            document.getElementById(type + 'Display').textContent = label;
+            updateDropdownSelection(type, value);
+            closeAllDropdowns();
+        }
+
+        function updateDropdownSelection(type, value) {
+            const dropdown = document.getElementById(type + 'Dropdown');
+            const options = dropdown.querySelectorAll('.custom-select-option');
+            options.forEach(option => {
+                if (option.getAttribute('data-value') === value) {
+                    option.classList.add('selected');
+                } else {
+                    option.classList.remove('selected');
+                }
+            });
+        }
+
+        // 完成人相关函数
+        function renderAssigneeOptions() {
+            const container = document.getElementById('assigneeOptions');
+            container.innerHTML = '';
+
+            if (assignees.length === 0) {
+                container.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">暂无完成人，请在设置中添加</div>';
+                return;
+            }
+
+            assignees.forEach(assignee => {
+                const name = typeof assignee === 'string' ? assignee : assignee.name;
+                const isChecked = selectedAssignees.includes(name);
+
+                const option = document.createElement('div');
+                option.className = 'assignee-option';
+                option.innerHTML = `
+                    <input type="checkbox" id="assignee_${name}" ${isChecked ? 'checked' : ''} onchange="toggleAssignee('${name}')">
+                    <label for="assignee_${name}">${name}</label>
+                `;
+                container.appendChild(option);
+            });
+        }
+
+        function toggleAssignee(name) {
+            const index = selectedAssignees.indexOf(name);
+            if (index > -1) {
+                selectedAssignees.splice(index, 1);
+            } else {
+                selectedAssignees.push(name);
+            }
+            updateAssigneeDisplay();
+        }
+
+        function updateAssigneeDisplay() {
+            const tagsContainer = document.getElementById('assigneeTags');
+            if (selectedAssignees.length === 0) {
+                tagsContainer.innerHTML = '<span class="placeholder">选择完成人（可选）</span>';
+            } else {
+                tagsContainer.innerHTML = selectedAssignees.map(name => `
+                    <span class="assignee-tag">
+                        ${name}
+                        <span class="remove" onclick="removeAssignee('${name}')">×</span>
+                    </span>
+                `).join('');
+            }
+        }
+
+        function removeAssignee(name) {
+            event.stopPropagation();
+            const index = selectedAssignees.indexOf(name);
+            if (index > -1) {
+                selectedAssignees.splice(index, 1);
+                updateAssigneeDisplay();
+                renderAssigneeOptions();
+            }
+        }
+
+        function toggleAssigneeDropdown() {
+            event.stopPropagation();
+            const display = document.querySelector('.multi-select-display');
+            const dropdown = document.getElementById('assigneeDropdown');
+            closeAllDropdowns('assignee');
+            const isActive = dropdown.classList.contains('active');
+            if (isActive) {
+                display.classList.remove('active');
+                dropdown.classList.remove('active');
+            } else {
+                display.classList.add('active');
+                dropdown.classList.add('active');
+            }
+        }
+
+        function filterAssignees(searchText) {
+            const options = document.querySelectorAll('.assignee-option');
+            const search = searchText.toLowerCase();
+            options.forEach(option => {
+                const label = option.querySelector('label').textContent.toLowerCase();
+                option.style.display = label.includes(search) ? 'flex' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>

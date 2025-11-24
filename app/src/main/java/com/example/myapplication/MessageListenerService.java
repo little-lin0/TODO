@@ -1215,7 +1215,7 @@ public class MessageListenerService extends Service {
     }
 
     /**
-     * 生成每日待办任务
+     * 生成每日待办任务（支持JSON格式和旧的字符串格式）
      */
     private void generateDailyTodos(String template, String date) {
         try {
@@ -1229,36 +1229,88 @@ public class MessageListenerService extends Service {
                 return;
             }
 
-            // 解析模板
-            String[] lines = template.split("\n");
             int createdCount = 0;
 
-            for (String line : lines) {
-                line = line.trim();
-                if (line.isEmpty()) continue;
+            // 尝试解析为JSON格式
+            try {
+                org.json.JSONArray templates = new org.json.JSONArray(template);
+                Log.d(TAG, "检测到JSON格式模板，共 " + templates.length() + " 个任务");
 
-                // 解析任务配置：标题|优先级|分类|时间|完成人
-                String[] parts = line.split("\\|");
-                if (parts.length < 1) continue;
+                for (int i = 0; i < templates.length(); i++) {
+                    org.json.JSONObject task = templates.getJSONObject(i);
 
-                String title = parts[0].trim();
-                String priority = parts.length > 1 ? parts[1].trim() : "medium";
-                String category = parts.length > 2 ? parts[2].trim() : "other";
-                String timeStr = parts.length > 3 ? parts[3].trim() : "23:59";
-                String assignee = parts.length > 4 ? parts[4].trim() : currentUserId;
+                    String title = task.optString("title", "");
+                    if (title.isEmpty()) continue;
 
-                // 构建截止时间
-                String deadline = buildDeadlineTime(date, timeStr);
-                // 通过查询数据库检查今天是否已经创建过每日任务
-                if (checkTaskExistsToday(supabaseUrl, supabaseAnonKey, supabaseUserId, title, assignee, date)) {
-                    // 今天已经创建过每日任务，跳过（不打印日志，避免频繁输出）
-                    continue;
+                    String priority = task.optString("priority", "medium");
+                    String category = task.optString("category", "work");
+                    String timeStr = task.optString("deadline", "23:59");
+                    String notes = task.optString("notes", null);
+
+                    // 处理完成人（可能是数组）
+                    String assignee = currentUserId;
+                    if (task.has("assignees") && !task.isNull("assignees")) {
+                        org.json.JSONArray assigneeArray = task.optJSONArray("assignees");
+                        if (assigneeArray != null && assigneeArray.length() > 0) {
+                            StringBuilder assigneeBuilder = new StringBuilder();
+                            for (int j = 0; j < assigneeArray.length(); j++) {
+                                if (j > 0) assigneeBuilder.append(",");
+                                assigneeBuilder.append(assigneeArray.getString(j));
+                            }
+                            assignee = assigneeBuilder.toString();
+                        }
+                    }
+
+                    // 构建截止时间
+                    String deadline = buildDeadlineTime(date, timeStr);
+
+                    // 检查今天是否已经创建过
+                    if (checkTaskExistsToday(supabaseUrl, supabaseAnonKey, supabaseUserId, title, assignee, date)) {
+                        continue;
+                    }
+
+                    // 创建任务
+                    String createdTaskId = createDailyTaskWithNotes(supabaseUrl, supabaseAnonKey, supabaseUserId,
+                            title, priority, category, deadline, assignee, notes);
+                    if (createdTaskId != null) {
+                        createdCount++;
+                        Log.d(TAG, "创建每日待办任务成功: " + title + ", ID: " + createdTaskId);
+                    }
                 }
-                // 创建任务
-                String createdTaskId = createDailyTask(supabaseUrl, supabaseAnonKey, supabaseUserId, title, priority, category, deadline, assignee);
-                if (createdTaskId != null) {
-                    createdCount++;
-                    Log.d(TAG, "创建每日待办任务成功: " + title + ", ID: " + createdTaskId);
+            } catch (org.json.JSONException e) {
+                // 不是JSON格式，尝试解析为旧格式（字符串模板）
+                Log.d(TAG, "检测到旧格式模板，尝试按行解析");
+                String[] lines = template.split("\n");
+
+                for (String line : lines) {
+                    line = line.trim();
+                    if (line.isEmpty()) continue;
+
+                    // 解析任务配置：标题|优先级|分类|时间|完成人
+                    String[] parts = line.split("\\|");
+                    if (parts.length < 1) continue;
+
+                    String title = parts[0].trim();
+                    String priority = parts.length > 1 ? parts[1].trim() : "medium";
+                    String category = parts.length > 2 ? parts[2].trim() : "other";
+                    String timeStr = parts.length > 3 ? parts[3].trim() : "23:59";
+                    String assignee = parts.length > 4 ? parts[4].trim() : currentUserId;
+
+                    // 构建截止时间
+                    String deadline = buildDeadlineTime(date, timeStr);
+
+                    // 检查今天是否已经创建过
+                    if (checkTaskExistsToday(supabaseUrl, supabaseAnonKey, supabaseUserId, title, assignee, date)) {
+                        continue;
+                    }
+
+                    // 创建任务
+                    String createdTaskId = createDailyTask(supabaseUrl, supabaseAnonKey, supabaseUserId,
+                            title, priority, category, deadline, assignee);
+                    if (createdTaskId != null) {
+                        createdCount++;
+                        Log.d(TAG, "创建每日待办任务成功: " + title + ", ID: " + createdTaskId);
+                    }
                 }
             }
 
@@ -1284,6 +1336,85 @@ public class MessageListenerService extends Service {
         } catch (Exception e) {
             Log.e(TAG, "构建截止时间失败，使用默认值", e);
             return date + "T23:59:00";
+        }
+    }
+
+    /**
+     * 创建每日任务到Supabase（带备注支持）
+     * @return 任务ID，如果创建失败返回null
+     */
+    private String createDailyTaskWithNotes(String supabaseUrl, String supabaseAnonKey, String supabaseUserId,
+                                             String title, String priority, String category, String deadline,
+                                             String assignee, String notes) {
+        try {
+            String createUrl = supabaseUrl + "/rest/v1/tasks";
+
+            java.net.URL url = new java.net.URL(createUrl);
+            java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("apikey", supabaseAnonKey);
+            connection.setRequestProperty("Authorization", "Bearer " + supabaseAnonKey);
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("Prefer", "return=minimal");
+            connection.setDoOutput(true);
+            String taskId = java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 24);
+
+            // 构建任务数据
+            org.json.JSONObject taskData = new org.json.JSONObject();
+            taskData.put("id", taskId);
+            taskData.put("user_id", supabaseUserId);
+            taskData.put("title", title);
+            taskData.put("priority", priority);
+            taskData.put("category", category);
+            taskData.put("deadline", deadline);
+            taskData.put("assignee", assignee);
+            if (notes != null && !notes.isEmpty()) {
+                taskData.put("notes", notes);
+            }
+            // 使用本地时间格式，不使用UTC标识
+            taskData.put("created_at", getCurrentLocalTimestamp());
+            taskData.put("completed", false);
+
+            String jsonPayload = taskData.toString();
+            Log.d(TAG, "创建任务JSON: " + jsonPayload);
+
+            java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(connection.getOutputStream());
+            writer.write(jsonPayload);
+            writer.flush();
+            writer.close();
+
+            int responseCode = connection.getResponseCode();
+            boolean success = responseCode == java.net.HttpURLConnection.HTTP_OK ||
+                            responseCode == java.net.HttpURLConnection.HTTP_CREATED ||
+                            responseCode == java.net.HttpURLConnection.HTTP_NO_CONTENT;
+
+            if (!success) {
+                Log.e(TAG, "创建任务失败，响应码: " + responseCode);
+                // 读取错误响应
+                try {
+                    java.io.BufferedReader errorReader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(connection.getErrorStream()));
+                    StringBuilder errorResponse = new StringBuilder();
+                    String line;
+                    while ((line = errorReader.readLine()) != null) {
+                        errorResponse.append(line);
+                    }
+                    errorReader.close();
+                    Log.e(TAG, "错误响应: " + errorResponse.toString());
+                } catch (Exception e) {
+                    Log.e(TAG, "读取错误响应失败", e);
+                }
+            }
+
+            // 如果创建成功，生成消息通知
+            if (success) {
+                createTaskNotificationMessage(supabaseUrl, supabaseAnonKey, supabaseUserId, taskId, title, "daily_task", assignee);
+                return taskId;
+            }
+            return null;
+        } catch (Exception e) {
+            Log.e(TAG, "创建每日任务异常", e);
+            return null;
         }
     }
 
